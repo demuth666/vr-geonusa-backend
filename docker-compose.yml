@@ -9,6 +9,7 @@ services:
       - "127.0.0.1:${POSTGRES_HOST_PORT}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -95,4 +96,3 @@ services:
 volumes:
   postgres_data:
   minio_data:
-
