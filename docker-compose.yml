@@ -1,0 +1,98 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7.4-alpine
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:${MINIO_API_HOST_PORT}:9000"
+      - "127.0.0.1:${MINIO_CONSOLE_HOST_PORT}:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    env_file:
+      - apps/api/.env
+    environment:
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://localhost:${API_HOST_PORT}
+      LOG_CHANNEL: stderr
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB}
+      DB_USERNAME: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+    ports:
+      - "127.0.0.1:${API_HOST_PORT}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1:8000/api/v1/health') === false ? 1 : 0);"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  ml:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/ml.Dockerfile
+    ports:
+      - "127.0.0.1:${ML_HOST_PORT}:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=2)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+volumes:
+  postgres_data:
+  minio_data:
+

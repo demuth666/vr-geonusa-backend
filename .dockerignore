@@ -1,0 +1,16 @@
+.git
+.env
+**/.env
+**/vendor
+**/node_modules
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.phpunit.result.cache
+apps/api/database/database.sqlite
+apps/api/storage/logs/*
+datasets
+artifacts
+*.pt
+*.onnx
+
