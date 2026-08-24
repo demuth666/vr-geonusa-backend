@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.3.0
+  version: 0.4.0
 paths:
   /api/v1/health:
     get:
@@ -86,6 +86,102 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/me/learning-sessions/active:
+    get:
+      operationId: getActiveLearningSession
+      summary: Get the authenticated student's active learning session
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Active learning session, or null when none exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActiveLearningSessionResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions:
+    post:
+      operationId: createLearningSession
+      summary: Create a learning session for the authenticated student
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLearningSessionRequest"
+      responses:
+        "201":
+          description: Learning session created; the write token is returned only once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateLearningSessionResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Respondent code does not belong to the authenticated student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: The student already has an active learning session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid input or client-supplied session state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}:
+    get:
+      operationId: getLearningSession
+      summary: Get an owned learning session using its write token
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      responses:
+        "200":
+          description: Learning session
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningSessionResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/heritage-sites:
     get:
       operationId: listHeritageSites
@@ -166,12 +262,82 @@ components:
       required: true
       schema:
         type: string
+    LearningSessionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    SessionWriteToken:
+      name: X-Session-Write-Token
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 64
+        maxLength: 64
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: Sanctum token
   schemas:
+    CreateLearningSessionRequest:
+      type: object
+      additionalProperties: false
+      required: [respondent_code]
+      properties:
+        respondent_code:
+          type: string
+          pattern: ^RSP-[A-Z0-9]{6}$
+    LearningSession:
+      type: object
+      required: [id, respondent_code, phase, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        respondent_code:
+          type: string
+          pattern: ^RSP-[A-Z0-9]{6}$
+        phase:
+          type: string
+          enum: [pretest, exploration, posttest, self_efficacy, completed]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    LearningSessionCreated:
+      allOf:
+        - $ref: "#/components/schemas/LearningSession"
+        - type: object
+          required: [write_token]
+          properties:
+            write_token:
+              type: string
+              minLength: 64
+              maxLength: 64
+    LearningSessionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/LearningSession"
+    ActiveLearningSessionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          oneOf:
+            - $ref: "#/components/schemas/LearningSession"
+            - type: "null"
+    CreateLearningSessionResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/LearningSessionCreated"
     HeritageSiteListResponse:
       type: object
       required: [data]

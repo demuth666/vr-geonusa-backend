@@ -25,8 +25,8 @@ class UserSeederTest extends TestCase
         $this->seed(UserSeeder::class);
 
         $this->postJson('/api/v1/auth/login', [
-            'email' => 'siti@example.test',
-            'password' => 'correct-password',
+            'email' => 'student@example.test',
+            'password' => 'student',
         ])
             ->assertOk()
             ->assertJsonPath('data.user.student_profile.school.name', 'SMP GeoNusa')

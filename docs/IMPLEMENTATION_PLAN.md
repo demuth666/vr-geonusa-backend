@@ -194,7 +194,7 @@ without hardcoded application data.
 
 ## Goal
 
-Separate student identity from research identity before storing assessment data.
+Separate student identity from research identity before storing assessmenAdd identity and heritage content APIst data.
 
 ## Implement
 
