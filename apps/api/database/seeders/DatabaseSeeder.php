@@ -8,6 +8,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Phase 0 has no application data.
+        $this->call(UserSeeder::class);
+        $this->call(BorobudurSeeder::class);
     }
 }

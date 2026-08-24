@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.1.0
+  version: 0.3.0
 paths:
   /api/v1/health:
     get:
@@ -29,8 +29,343 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/login:
+    post:
+      operationId: loginStudent
+      summary: Authenticate a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Student authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LoginResponse"
+        "422":
+          description: Invalid input or credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/auth/logout:
+    post:
+      operationId: logoutStudent
+      summary: Revoke the current access token
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Student logged out
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/me:
+    get:
+      operationId: getCurrentStudent
+      summary: Get the authenticated student
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Authenticated student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthenticatedStudentResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/heritage-sites:
+    get:
+      operationId: listHeritageSites
+      summary: List heritage sites
+      responses:
+        "200":
+          description: Heritage sites
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeritageSiteListResponse"
+  /api/v1/heritage-sites/{slug}:
+    get:
+      operationId: getHeritageSite
+      summary: Get a heritage site
+      parameters:
+        - $ref: "#/components/parameters/HeritageSiteSlug"
+      responses:
+        "200":
+          description: Heritage site
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeritageSiteResponse"
+        "404":
+          description: Heritage site not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/heritage-sites/{slug}/areas:
+    get:
+      operationId: listHeritageSiteAreas
+      summary: List a heritage site's areas and panorama nodes
+      parameters:
+        - $ref: "#/components/parameters/HeritageSiteSlug"
+      responses:
+        "200":
+          description: Heritage areas
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HeritageAreaListResponse"
+        "404":
+          description: Heritage site not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/panorama-nodes/{id}:
+    get:
+      operationId: getPanoramaNode
+      summary: Get a panorama node and its outgoing navigation links
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Panorama node
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PanoramaNodeResponse"
+        "404":
+          description: Panorama node not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
+  parameters:
+    HeritageSiteSlug:
+      name: slug
+      in: path
+      required: true
+      schema:
+        type: string
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: Sanctum token
   schemas:
+    HeritageSiteListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeritageSite"
+    HeritageSiteResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/HeritageSite"
+    HeritageSite:
+      type: object
+      required: [id, name, slug, description, cover_image_url]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: [string, "null"]
+        cover_image_url:
+          type: string
+          format: uri
+    HeritageAreaListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/HeritageArea"
+    HeritageArea:
+      type: object
+      required: [id, name, slug, description, panorama_nodes]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: [string, "null"]
+        panorama_nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/PanoramaNodeSummary"
+    PanoramaNodeSummary:
+      type: object
+      required: [id, name, slug, panorama_url]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        panorama_url:
+          type: string
+          format: uri
+    PanoramaNodeResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/PanoramaNode"
+    PanoramaNode:
+      allOf:
+        - $ref: "#/components/schemas/PanoramaNodeSummary"
+        - type: object
+          required: [area, links]
+          properties:
+            area:
+              $ref: "#/components/schemas/HeritageAreaReference"
+            links:
+              type: array
+              items:
+                $ref: "#/components/schemas/PanoramaLink"
+    HeritageAreaReference:
+      type: object
+      required: [id, name, slug, heritage_site]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        heritage_site:
+          $ref: "#/components/schemas/HeritageSiteReference"
+    HeritageSiteReference:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+    PanoramaLink:
+      type: object
+      required: [id, label, yaw, pitch, target]
+      properties:
+        id:
+          type: integer
+        label:
+          type: string
+        yaw:
+          type: number
+        pitch:
+          type: number
+        target:
+          $ref: "#/components/schemas/PanoramaNodeSummary"
+    LoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    LoginResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [token, user]
+          properties:
+            token:
+              type: string
+            user:
+              $ref: "#/components/schemas/AuthenticatedStudent"
+    AuthenticatedStudentResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/AuthenticatedStudent"
+    AuthenticatedStudent:
+      type: object
+      required: [id, email, student_profile]
+      properties:
+        id:
+          type: integer
+        email:
+          type: string
+          format: email
+        student_profile:
+          oneOf:
+            - $ref: "#/components/schemas/StudentProfile"
+            - type: "null"
+    StudentProfile:
+      type: object
+      required: [id, name, student_number, school, classrooms]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        student_number:
+          type: string
+        school:
+          $ref: "#/components/schemas/School"
+        classrooms:
+          type: array
+          items:
+            $ref: "#/components/schemas/Classroom"
+    School:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+    Classroom:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
     ErrorResponse:
       type: object
       required: [error]
