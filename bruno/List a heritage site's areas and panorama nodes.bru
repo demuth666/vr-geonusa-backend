@@ -1,0 +1,106 @@
+meta {
+  name: List a heritage site's areas and panorama nodes
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/heritage-sites/:slug/areas
+  body: none
+  auth: inherit
+}
+
+params:path {
+  slug: 
+}
+
+settings {
+  forwardAuthorizationHeader: false
+}
+
+example {
+  name: 200 Response
+  description: Heritage areas
+  
+  request: {
+    url: {{baseUrl}}/api/v1/heritage-sites/:slug/areas
+    method: GET
+    mode: none
+    params:path: {
+      slug: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "data": [
+            {
+              "id": 0,
+              "name": "",
+              "slug": "",
+              "description": "",
+              "panorama_nodes": [
+                {
+                  "id": 0,
+                  "name": "",
+                  "slug": "",
+                  "panorama_url": ""
+                }
+              ]
+            }
+          ]
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Heritage site not found
+  
+  request: {
+    url: {{baseUrl}}/api/v1/heritage-sites/:slug/areas
+    method: GET
+    mode: none
+    params:path: {
+      slug: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}

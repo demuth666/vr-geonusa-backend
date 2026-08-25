@@ -15,4 +15,9 @@ class ResearchStudy extends Model
     {
         return $this->hasMany(ResearchParticipant::class);
     }
+
+    public function assessmentInstruments(): HasMany
+    {
+        return $this->hasMany(AssessmentInstrument::class);
+    }
 }

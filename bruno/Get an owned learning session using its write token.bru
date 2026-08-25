@@ -1,0 +1,197 @@
+meta {
+  name: Get an owned learning session using its write token
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/learning-sessions/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  X-Session-Write-Token: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  forwardAuthorizationHeader: false
+}
+
+example {
+  name: 200 Response
+  description: Learning session
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "data": {
+            "id": 0,
+            "respondent_code": "",
+            "phase": "pretest",
+            "created_at": "",
+            "updated_at": ""
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Authentication required
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 403 Response
+  description: Invalid session write token
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 403
+      text: Forbidden
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Learning session not found or not owned by the student
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}

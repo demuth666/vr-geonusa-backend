@@ -1,0 +1,18 @@
+meta {
+  name: Health
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/health
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("API is healthy", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.data.status).to.equal("ok");
+  });
+}

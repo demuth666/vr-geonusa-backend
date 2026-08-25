@@ -1,0 +1,347 @@
+meta {
+  name: Create or replace one answer on a draft assessment attempt
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/api/v1/assessment-attempts/:attemptId/answers/:itemId
+  body: json
+  auth: bearer
+}
+
+params:path {
+  attemptId: 
+  itemId: 
+}
+
+headers {
+  X-Session-Write-Token: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "selected_option_id": 0
+  }
+}
+
+settings {
+  forwardAuthorizationHeader: false
+}
+
+example {
+  name: 200 Response
+  description: Answer saved
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:attemptId/answers/:itemId
+    method: PUT
+    mode: json
+    params:path: {
+      attemptId: 
+      itemId: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {
+        "selected_option_id": 0
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "data": {
+            "id": 0,
+            "type": "pretest",
+            "title": "",
+            "status": "draft",
+            "submitted_at": "",
+            "items": [
+              {
+                "id": 0,
+                "prompt": "",
+                "position": 0,
+                "selected_option_id": "",
+                "options": [
+                  {
+                    "id": 0,
+                    "text": "",
+                    "position": 0
+                  }
+                ]
+              }
+            ],
+            "created_at": "",
+            "updated_at": ""
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Authentication required
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:attemptId/answers/:itemId
+    method: PUT
+    mode: json
+    params:path: {
+      attemptId: 
+      itemId: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {
+        "selected_option_id": 0
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 403 Response
+  description: Invalid session write token
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:attemptId/answers/:itemId
+    method: PUT
+    mode: json
+    params:path: {
+      attemptId: 
+      itemId: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {
+        "selected_option_id": 0
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 403
+      text: Forbidden
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Assessment attempt not found or not owned by the student
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:attemptId/answers/:itemId
+    method: PUT
+    mode: json
+    params:path: {
+      attemptId: 
+      itemId: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {
+        "selected_option_id": 0
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 409 Response
+  description: Attempt is submitted or invalid for the current session phase
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:attemptId/answers/:itemId
+    method: PUT
+    mode: json
+    params:path: {
+      attemptId: 
+      itemId: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {
+        "selected_option_id": 0
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 409
+      text: Conflict
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 422 Response
+  description: Invalid item or selected option
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:attemptId/answers/:itemId
+    method: PUT
+    mode: json
+    params:path: {
+      attemptId: 
+      itemId: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {
+        "selected_option_id": 0
+      }
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 422
+      text: Unprocessable Entity
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}

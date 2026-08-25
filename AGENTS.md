@@ -8,9 +8,10 @@ Current implementation scope:
 
 * Borobudur only.
 * Backend API.
+* Filament internal back-office.
 * Research data flow.
 * Machine Learning integration.
-* No frontend implementation.
+* No student/custom frontend implementation.
 * No Prambanan implementation.
 
 Read `docs/PRD.md` and `docs/IMPLEMENTATION_PLAN.md` before proposing significant architectural changes.
@@ -64,6 +65,7 @@ Laravel owns:
 * research data,
 * heritage content,
 * ML inference persistence.
+* Filament back-office.
 
 ### ML Service
 
@@ -87,6 +89,8 @@ The ML service must NOT:
 ## API Contract
 
 `contracts/openapi.yaml` is the source of truth for the frontend/backend interface.
+
+Filament runs inside Laravel and is not an OpenAPI transport.
 
 When an endpoint is added or its request/response changes:
 
@@ -121,6 +125,31 @@ Do not create abstractions without a current use case.
 Do not create microservices for application domains.
 
 Use a modular monolith.
+
+---
+
+## Filament Rules
+
+Filament is a presentation/back-office layer, not a separate domain.
+
+Filament resources and REST controllers must reuse the same actions, services, domain rules, and Eloquent models.
+
+Do not duplicate business rules inside Filament resources or pages.
+
+Panel access uses these fixed V1 roles:
+
+```text
+super_admin
+researcher
+teacher
+student
+```
+
+Students must not access Filament.
+
+Every Filament resource must use Laravel policies or equivalent native authorization for its current scope.
+
+Add Filament resources one coherent capability at a time. Do not scaffold every planned resource in one task.
 
 ---
 
@@ -302,6 +331,8 @@ Run relevant Laravel tests after backend modifications.
 
 Critical authorization and state-machine behavior requires feature tests.
 
+Filament changes require panel-access and relevant policy tests.
+
 ### ML
 
 Run `pytest` after Python ML modifications.
@@ -395,7 +426,8 @@ Do NOT implement unless explicitly requested:
 * React/frontend UI,
 * Prambanan,
 * 3D object interaction,
-* teacher dashboard,
+* custom admin frontend,
+* advanced teacher/researcher analytics dashboards,
 * gamification,
 * certificates,
 * mobile application,
@@ -419,6 +451,8 @@ Flag changes that:
 * hardcode panorama navigation,
 * introduce credentials or secrets,
 * modify API behavior without updating OpenAPI.
+* allow students into Filament,
+* let Filament bypass policies or duplicate domain business logic,
 
 ---
 

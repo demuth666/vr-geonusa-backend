@@ -1,0 +1,326 @@
+meta {
+  name: Start the assessment matching the learning session's current phase
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/learning-sessions/:id/assessment-attempts
+  body: json
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+headers {
+  X-Session-Write-Token: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+body:json {
+  {}
+}
+
+settings {
+  forwardAuthorizationHeader: false
+}
+
+example {
+  name: 201 Response
+  description: Assessment attempt created
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id/assessment-attempts
+    method: POST
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 201
+      text: Created
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "data": {
+            "id": 0,
+            "type": "pretest",
+            "title": "",
+            "status": "draft",
+            "submitted_at": "",
+            "items": [
+              {
+                "id": 0,
+                "prompt": "",
+                "position": 0,
+                "selected_option_id": "",
+                "options": [
+                  {
+                    "id": 0,
+                    "text": "",
+                    "position": 0
+                  }
+                ]
+              }
+            ],
+            "created_at": "",
+            "updated_at": ""
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Authentication required
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id/assessment-attempts
+    method: POST
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 403 Response
+  description: Invalid session write token
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id/assessment-attempts
+    method: POST
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 403
+      text: Forbidden
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Learning session not found or not owned by the student
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id/assessment-attempts
+    method: POST
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 409 Response
+  description: Session phase is invalid, instrument is unavailable, or an attempt already exists
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id/assessment-attempts
+    method: POST
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 409
+      text: Conflict
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 422 Response
+  description: Client supplied server-owned assessment state
+  
+  request: {
+    url: {{baseUrl}}/api/v1/learning-sessions/:id/assessment-attempts
+    method: POST
+    mode: json
+    params:path: {
+      id: 
+    }
+  
+    headers: {
+      X-Session-Write-Token: 
+    }
+  
+    body:json: {
+      {}
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 422
+      text: Unprocessable Entity
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}

@@ -1,0 +1,36 @@
+meta {
+  name: Create learning session
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/learning-sessions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+body:json {
+  {
+    "respondent_code": "{{respondentCode}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("sessionId", res.body.data.id);
+    bru.setVar("sessionWriteToken", res.body.data.write_token);
+  }
+}
+
+tests {
+  test("creates a pretest session", function () {
+    expect(res.status).to.equal(201);
+    expect(res.body.data.phase).to.equal("pretest");
+    expect(res.body.data.write_token).to.be.a("string");
+  });
+}

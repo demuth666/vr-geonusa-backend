@@ -1,0 +1,22 @@
+meta {
+  name: List heritage sites
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/heritage-sites
+  body: none
+  auth: none
+}
+
+headers {
+  Accept: application/json
+}
+
+tests {
+  test("returns heritage sites", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.data).to.be.an("array");
+  });
+}

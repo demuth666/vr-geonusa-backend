@@ -1,0 +1,19 @@
+{
+  "version": "1",
+  "name": "VR-GeoNusa API",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ],
+  "openapi": [
+    {
+      "sourceUrl": "../contracts/openapi.yaml",
+      "groupBy": "tags",
+      "autoCheck": true,
+      "autoCheckInterval": 5,
+      "lastSyncDate": "2026-08-24T10:37:18.652Z",
+      "specHash": "51a7179058847af4dc6f04d356525408"
+    }
+  ]
+}

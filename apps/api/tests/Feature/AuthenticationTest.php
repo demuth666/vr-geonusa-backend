@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Models\StudentProfile;
 use App\Domain\Identity\Models\User;
 use App\Domain\School\Models\Classroom;
@@ -53,6 +54,30 @@ class AuthenticationTest extends TestCase
             ->assertUnprocessable()
             ->assertJsonPath('error.code', 'VALIDATION_ERROR')
             ->assertJsonPath('error.details.fields.email.0', 'The provided credentials are incorrect.');
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+    }
+
+    public function test_student_api_rejects_internal_roles_and_students_without_profiles(): void
+    {
+        $researcher = User::create([
+            'email' => 'researcher@example.test',
+            'password' => 'correct-password',
+            'role' => UserRole::Researcher,
+        ]);
+        $studentWithoutProfile = User::create([
+            'email' => 'unlinked-student@example.test',
+            'password' => 'correct-password',
+        ]);
+
+        foreach ([$researcher, $studentWithoutProfile] as $user) {
+            $this->postJson('/api/v1/auth/login', [
+                'email' => $user->email,
+                'password' => 'correct-password',
+            ])
+                ->assertUnprocessable()
+                ->assertJsonPath('error.details.fields.email.0', 'The provided credentials are incorrect.');
+        }
 
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }

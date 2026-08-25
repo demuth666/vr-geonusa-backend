@@ -1,0 +1,28 @@
+meta {
+  name: Get learning session
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/learning-sessions/{{sessionId}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  Accept: application/json
+  X-Session-Write-Token: {{sessionWriteToken}}
+}
+
+auth:bearer {
+  token: {{accessToken}}
+}
+
+tests {
+  test("returns the owned learning session", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.data.id).to.equal(Number(bru.getVar("sessionId")));
+    expect(res.body.data).not.to.have.property("write_token");
+  });
+}

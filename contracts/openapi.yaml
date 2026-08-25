@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.4.0
+  version: 0.6.0
 paths:
   /api/v1/health:
     get:
@@ -182,6 +182,242 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/panorama-visits:
+    post:
+      operationId: recordPanoramaVisit
+      summary: Record a panorama visit during exploration
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordPanoramaVisitRequest"
+      responses:
+        "201":
+          description: Panorama visit recorded and current panorama updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActivityEventResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Learning session is not in the exploration phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid panorama node or client-supplied visit state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/assessment-attempts:
+    post:
+      operationId: startAssessmentAttempt
+      summary: Start the assessment matching the learning session's current phase
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartAssessmentAttemptRequest"
+      responses:
+        "201":
+          description: Assessment attempt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentAttemptResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Session phase is invalid, instrument is unavailable, or an attempt already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Client supplied server-owned assessment state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/assessment-attempts/{id}:
+    get:
+      operationId: getAssessmentAttempt
+      summary: Get an assessment attempt owned by the authenticated student
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssessmentAttemptId"
+      responses:
+        "200":
+          description: Assessment attempt without answer correctness or score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentAttemptResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Assessment attempt not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/assessment-attempts/{attemptId}/answers/{itemId}:
+    put:
+      operationId: saveAssessmentAnswer
+      summary: Create or replace one answer on a draft assessment attempt
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssessmentAttemptPathId"
+        - $ref: "#/components/parameters/AssessmentItemPathId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveAssessmentAnswerRequest"
+      responses:
+        "200":
+          description: Answer saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentAttemptResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Assessment attempt not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Attempt is submitted or invalid for the current session phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid item or selected option
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/assessment-attempts/{attemptId}/submit:
+    post:
+      operationId: submitAssessmentAttempt
+      summary: Score and lock a complete assessment attempt
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/AssessmentAttemptPathId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitAssessmentAttemptRequest"
+      responses:
+        "200":
+          description: Assessment submitted; a pretest submission advances the session to exploration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentAttemptResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Assessment attempt not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Attempt is incomplete, submitted, or invalid for the current session phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Client supplied score, correctness, or submission state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/heritage-sites:
     get:
       operationId: listHeritageSites
@@ -268,6 +504,24 @@ components:
       required: true
       schema:
         type: integer
+    AssessmentAttemptId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    AssessmentAttemptPathId:
+      name: attemptId
+      in: path
+      required: true
+      schema:
+        type: integer
+    AssessmentItemPathId:
+      name: itemId
+      in: path
+      required: true
+      schema:
+        type: integer
     SessionWriteToken:
       name: X-Session-Write-Token
       in: header
@@ -282,6 +536,109 @@ components:
       scheme: bearer
       bearerFormat: Sanctum token
   schemas:
+    RecordPanoramaVisitRequest:
+      type: object
+      additionalProperties: false
+      required: [panorama_node_id]
+      properties:
+        panorama_node_id:
+          type: integer
+    ActivityEventResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/PanoramaVisitedEvent"
+    PanoramaVisitedEvent:
+      type: object
+      required: [id, type, panorama_node, visited_at]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          const: panorama_visited
+        panorama_node:
+          $ref: "#/components/schemas/PanoramaNodeSummary"
+        visited_at:
+          type: string
+          format: date-time
+    StartAssessmentAttemptRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+    SaveAssessmentAnswerRequest:
+      type: object
+      additionalProperties: false
+      required: [selected_option_id]
+      properties:
+        selected_option_id:
+          type: integer
+    SubmitAssessmentAttemptRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+    AssessmentAttemptResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/AssessmentAttempt"
+    AssessmentAttempt:
+      type: object
+      required: [id, type, title, status, submitted_at, items, created_at, updated_at]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [pretest, posttest, self_efficacy]
+        title:
+          type: string
+        status:
+          type: string
+          enum: [draft, submitted]
+        submitted_at:
+          type: [string, "null"]
+          format: date-time
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentItem"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    AssessmentItem:
+      type: object
+      required: [id, prompt, position, selected_option_id, options]
+      properties:
+        id:
+          type: integer
+        prompt:
+          type: string
+        position:
+          type: integer
+          minimum: 1
+        selected_option_id:
+          type: [integer, "null"]
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/AssessmentOption"
+    AssessmentOption:
+      type: object
+      required: [id, text, position]
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        position:
+          type: integer
+          minimum: 1
     CreateLearningSessionRequest:
       type: object
       additionalProperties: false
@@ -292,7 +649,7 @@ components:
           pattern: ^RSP-[A-Z0-9]{6}$
     LearningSession:
       type: object
-      required: [id, respondent_code, phase, created_at, updated_at]
+      required: [id, respondent_code, phase, current_panorama_node, created_at, updated_at]
       properties:
         id:
           type: integer
@@ -302,6 +659,10 @@ components:
         phase:
           type: string
           enum: [pretest, exploration, posttest, self_efficacy, completed]
+        current_panorama_node:
+          oneOf:
+            - $ref: "#/components/schemas/PanoramaNodeSummary"
+            - type: "null"
         created_at:
           type: string
           format: date-time

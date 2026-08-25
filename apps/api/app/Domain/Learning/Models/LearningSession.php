@@ -2,12 +2,15 @@
 
 namespace App\Domain\Learning\Models;
 
+use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Enums\LearningSessionPhase;
+use App\Domain\Research\Models\AssessmentAttempt;
 use App\Domain\Research\Models\ResearchParticipant;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use LogicException;
 
 class LearningSession extends Model
@@ -35,6 +38,21 @@ class LearningSession extends Model
     public function researchParticipant(): BelongsTo
     {
         return $this->belongsTo(ResearchParticipant::class);
+    }
+
+    public function currentPanoramaNode(): BelongsTo
+    {
+        return $this->belongsTo(PanoramaNode::class, 'current_panorama_node_id');
+    }
+
+    public function activityEvents(): HasMany
+    {
+        return $this->hasMany(ActivityEvent::class);
+    }
+
+    public function assessmentAttempts(): HasMany
+    {
+        return $this->hasMany(AssessmentAttempt::class);
     }
 
     public function scopeActive(Builder $query): Builder

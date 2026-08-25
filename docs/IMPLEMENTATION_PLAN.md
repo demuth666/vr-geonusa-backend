@@ -4,6 +4,8 @@
 
 Build one verified vertical slice at a time.
 
+Student REST API and Filament must reuse the same application/domain logic.
+
 Never prompt Codex with:
 
 > Build the whole VR-GeoNusa backend.
@@ -175,6 +177,8 @@ Borobudur
 
 Use fake/dev object-storage URLs first.
 
+Use Docker MinIO through Laravel's S3-compatible storage disk for local panorama binaries. Store only the object path/URL in PostgreSQL.
+
 ## Acceptance Criteria
 
 A frontend developer can obtain:
@@ -194,7 +198,7 @@ without hardcoded application data.
 
 ## Goal
 
-Separate student identity from research identity before storing assessmenAdd identity and heritage content APIst data.
+Separate student identity from research identity before storing assessment outcomes.
 
 ## Implement
 
@@ -317,6 +321,14 @@ backend calculates score
 
 Correct answers never appear in API responses.
 
+### Common Rules
+
+* clients submit item and selected-option IDs, never scores,
+* selected options must belong to the submitted item and instrument,
+* ownership, session write token, and allowed phase are enforced,
+* submitted attempts cannot be modified,
+* self-efficacy responses have no correctness or score.
+
 ---
 
 # Phase 7 — Panorama Learning
@@ -349,6 +361,88 @@ Create meaningful activity events.
 
 ---
 
+# Phase 7A — Filament & Role Foundation
+
+## Goal
+
+Internal users can authenticate to a secured Filament panel without changing the student API contract.
+
+## Implement
+
+```text
+Filament admin panel
+UserRole
+super_admin
+researcher
+teacher
+student
+```
+
+Use Filament's native panel access contract.
+
+Student API login accepts only student-role users with a student profile.
+
+Do not add a permission package or scaffold domain resources in this foundation slice.
+
+## Tests
+
+* guests are redirected to Filament login,
+* students cannot access Filament,
+* super admins, researchers, and teachers can access Filament,
+* internal users cannot authenticate through the student API.
+
+---
+
+# Phase 7B — Existing Domain Back-office
+
+Add Filament resources as separate, verified tasks in this order:
+
+```text
+1. HeritageSite + HeritageArea
+2. PanoramaNode + PanoramaLink
+3. ResearchStudy + ResearchParticipant
+4. AssessmentInstrument + nested AssessmentItem/AssessmentOption management
+5. School + Classroom + Student
+```
+
+Assessment attempts and answers are system-generated records, not editable back-office content.
+
+For each task:
+
+* use the existing Eloquent/domain model,
+* add policies before exposing the resource,
+* verify unauthorized and role-scoped access,
+* where an existing REST read path exists, verify it reflects Filament changes,
+* do not duplicate REST controller business logic.
+
+Do not implement all resources in one task.
+
+---
+
+# Phase 7C — Panorama Object Storage
+
+## Goal
+
+Internal users can upload panorama images to Docker MinIO through Laravel's S3-compatible storage disk.
+
+## Implement
+
+* configure the Laravel S3 disk and local MinIO environment values,
+* provision the development panorama bucket during fresh Docker setup,
+* replace manual panorama URL entry with a Filament image upload,
+* store only an object path/URL in `panorama_nodes`, never image binaries,
+* keep the existing REST `panorama_url` response usable by the student frontend.
+
+## Tests
+
+* panorama uploads use Laravel Storage rather than PostgreSQL,
+* invalid file types and oversized uploads are rejected,
+* replacing or deleting an upload does not orphan objects,
+* a fresh Docker setup can write and read the development bucket,
+* panorama REST responses contain a usable image URL.
+
+---
+
 # Phase 8 — Geometry & Learning Material
 
 ## Goal
@@ -359,9 +453,11 @@ Represent Borobudur objects correctly.
 
 ```text
 HeritageObject
+PanoramaObjectAnnotation
 GeometryShape
 HeritageGeometryMapping
 LearningObjective
+Learning material content
 ```
 
 Development data:
@@ -376,7 +472,34 @@ Endpoint:
 
 ```text
 GET /heritage-objects/{id}/learning-material
+
+POST /learning-sessions/{id}/materials/{objectId}/viewed
 ```
+
+Material-view mutations must enforce session ownership, write token, and exploration phase, then create an activity event.
+
+## Tests
+
+* heritage objects remain separate from geometry shapes,
+* mappings use approximation semantics,
+* panorama annotations reference objects instead of encoding geometry classes,
+* material views reject invalid owners, tokens, and session phases.
+
+---
+
+# Phase 8A — Geometry & Learning Back-office
+
+Add Filament resources as separate, verified tasks after the Phase 8 domain models exist:
+
+```text
+1. HeritageObjectResource
+2. GeometryShapeResource + HeritageGeometryMappingResource
+3. LearningObjectiveResource + learning material content
+```
+
+Manage panorama object annotations through their owning panorama/object resource; do not create a standalone resource without an operational need.
+
+Apply the same policy, role-scope, shared-domain-logic, and REST-visibility checks defined in Phase 7B.
 
 ---
 
@@ -412,6 +535,28 @@ Server calculates correctness.
 
 Micro quiz may return immediate feedback.
 
+## Tests
+
+* micro quizzes remain separate from research assessments,
+* the server calculates correctness,
+* submitted attempts cannot be modified,
+* immediate feedback never changes pretest/posttest response rules.
+
+---
+
+# Phase 9A — Quiz Back-office
+
+Add:
+
+```text
+QuizResource
+QuestionResource
+```
+
+Manage question options under their owning question instead of creating a standalone resource.
+
+Apply the same policy, role-scope, and shared-domain-logic checks defined in Phase 7B.
+
 ---
 
 # Phase 10 — Exploration Completion
@@ -445,6 +590,12 @@ exploration
 → posttest
 ```
 
+## Tests
+
+* incomplete requirements cannot advance the session,
+* completion requires session ownership, write token, and exploration phase,
+* a successful completion advances exactly once to posttest.
+
 ---
 
 # Phase 11 — Posttest & Self-Efficacy
@@ -470,6 +621,13 @@ GET /learning-sessions/{id}/result
 ```
 
 Do not expose research score comparisons to student by default.
+
+## Tests
+
+* posttest cannot start before exploration is complete,
+* posttest submission transitions only to self-efficacy,
+* self-efficacy submission transitions only to completed,
+* result responses do not expose answer keys or unrestricted research comparisons.
 
 ---
 
@@ -498,6 +656,16 @@ Detector interface
 DummyDetector
 ```
 
+Prediction input must include:
+
+```text
+image
+panorama_node_id
+camera_yaw
+camera_pitch
+camera_fov
+```
+
 Dummy response:
 
 ```json
@@ -507,7 +675,8 @@ Dummy response:
   "detections": [
     {
       "class": "stupa",
-      "confidence": 0.95
+      "confidence": 0.95,
+      "bounding_box": [10, 20, 100, 120]
     }
   ]
 }
@@ -517,7 +686,7 @@ Dummy response:
 
 Detector logic can run without FastAPI.
 
-API tests pass.
+Tests cover the detector interface, invalid images, API schema, and prediction response contract.
 
 ---
 
@@ -544,6 +713,8 @@ save inference run
 ↓
 save detections
 ↓
+map detections to heritage/geometry content
+↓
 return prediction
 ```
 
@@ -565,7 +736,35 @@ camera pitch
 camera FOV
 inference_ms
 total_latency_ms
+detection class
+detection confidence
+bounding box
 ```
+
+Every successful prediction must be attributable to a model version. ML service failures must return a controlled API error without corrupting or advancing the learning session.
+
+## Tests
+
+* frontend-facing requests require session ownership, write token, and exploration phase,
+* successful inference records model version, camera metadata, latency, detections, and confidence,
+* ML service failure does not advance or corrupt the learning session,
+* ML service never accesses the application database directly.
+
+---
+
+# Phase 13A — Machine Learning Back-office
+
+Add:
+
+```text
+MLModelResource
+MLModelVersionResource
+MLInferenceRunResource
+```
+
+Inference runs and detections are read-only operational records. Model/version mutations remain restricted by policy.
+
+Apply role-scoped policies and verify API-created inference records are visible in Filament without duplicating inference logic.
 
 ---
 
@@ -586,6 +785,12 @@ YOLODetector
 without changing FastAPI route contract or Laravel integration.
 
 This is the reason detector abstraction exists.
+
+## Tests
+
+* model loading succeeds and reports its version,
+* detector output satisfies the existing prediction contract,
+* FastAPI remains only an adapter around reusable detector code.
 
 ---
 
@@ -623,6 +828,10 @@ Annotation:
 object-level bounding boxes
 ```
 
+Split train, validation, and test data so near-identical crops from the same panorama cannot leak across splits.
+
+Add preprocessing tests that can run without FastAPI or a training job.
+
 ---
 
 # Phase 16 — ML Evaluation
@@ -656,7 +865,10 @@ Before production pilot:
 * production logging,
 * secret handling,
 * backup strategy,
-* API contract review.
+* API contract review,
+* GitHub Actions quality gates for backend and ML tests,
+* Nginx deployment-layer configuration,
+* fresh-clone Docker Compose and migration/seeder verification.
 
 Run full test suite.
 

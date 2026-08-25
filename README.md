@@ -28,9 +28,17 @@ Replace the placeholder passwords in `.env`, then copy the generated application
 | Service | URL |
 | --- | --- |
 | Laravel API | <http://127.0.0.1:8000/api/v1/health> |
+| Filament admin | <http://127.0.0.1:8000/admin> |
 | ML service | <http://127.0.0.1:8001/health> |
 | MinIO API | <http://127.0.0.1:9000> |
 | MinIO console | <http://127.0.0.1:9001> |
+
+Set `ADMIN_EMAIL` and `ADMIN_PASSWORD` in `apps/api/.env`, then create or update
+the first super-admin after running migrations:
+
+```bash
+docker compose run --rm api php artisan db:seed --class=AdminUserSeeder --force
+```
 
 ## Verify
 

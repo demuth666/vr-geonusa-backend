@@ -1,0 +1,156 @@
+meta {
+  name: Get an assessment attempt owned by the authenticated student
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/assessment-attempts/:id
+  body: none
+  auth: bearer
+}
+
+params:path {
+  id: 
+}
+
+auth:bearer {
+  token: {{token}}
+}
+
+settings {
+  forwardAuthorizationHeader: false
+}
+
+example {
+  name: 200 Response
+  description: Assessment attempt without answer correctness or score
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "data": {
+            "id": 0,
+            "type": "pretest",
+            "title": "",
+            "status": "draft",
+            "submitted_at": "",
+            "items": [
+              {
+                "id": 0,
+                "prompt": "",
+                "position": 0,
+                "selected_option_id": "",
+                "options": [
+                  {
+                    "id": 0,
+                    "text": "",
+                    "position": 0
+                  }
+                ]
+              }
+            ],
+            "created_at": "",
+            "updated_at": ""
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 401 Response
+  description: Authentication required
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 401
+      text: Unauthorized
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Assessment attempt not found or not owned by the student
+  
+  request: {
+    url: {{baseUrl}}/api/v1/assessment-attempts/:id
+    method: GET
+    mode: none
+    params:path: {
+      id: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}

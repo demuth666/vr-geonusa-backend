@@ -1,0 +1,18 @@
+meta {
+  name: Get heritage site
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/heritage-sites
+  body: none
+  auth: inherit
+}
+
+tests {
+  test("returns the requested heritage site", function () {
+    expect(res.status).to.equal(200);
+    expect(res.body.data.slug).to.equal(bru.getEnvVar("heritageSiteSlug"));
+  });
+}

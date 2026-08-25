@@ -26,7 +26,7 @@ class LearningSessionController extends Controller
         return response()->json([
             'data' => [
                 ...LearningSessionResource::make(
-                    $created['session']->load('researchParticipant'),
+                    $created['session']->load(['researchParticipant', 'currentPanoramaNode']),
                 )->resolve($request),
                 'write_token' => $created['write_token'],
             ],
@@ -40,7 +40,7 @@ class LearningSessionController extends Controller
         $session = LearningSession::query()
             ->ownedBy($user)
             ->active()
-            ->with('researchParticipant')
+            ->with(['researchParticipant', 'currentPanoramaNode'])
             ->first();
 
         return response()->json([
@@ -56,7 +56,7 @@ class LearningSessionController extends Controller
         $user = $request->user();
         $session = LearningSession::query()
             ->ownedBy($user)
-            ->with('researchParticipant')
+            ->with(['researchParticipant', 'currentPanoramaNode'])
             ->findOrFail($id);
 
         abort_unless(

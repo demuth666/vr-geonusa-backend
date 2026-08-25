@@ -29,7 +29,7 @@ class UserSeeder extends Seeder
             ['user_id' => $user->id],
             [
                 'school_id' => $school->id,
-                'name' => 'Siti Rahma',
+                'name' => 'Ahmad Taupik',
                 'student_number' => 'VII-001',
             ],
         );

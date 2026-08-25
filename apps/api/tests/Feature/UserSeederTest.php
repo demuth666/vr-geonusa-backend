@@ -14,7 +14,7 @@ class UserSeederTest extends TestCase
     {
         $this->app->detectEnvironment(fn () => 'production');
 
-        $this->seed(UserSeeder::class);
+        app(UserSeeder::class)->run();
 
         $this->assertDatabaseCount('users', 0);
     }

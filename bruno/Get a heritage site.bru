@@ -1,0 +1,97 @@
+meta {
+  name: Get a heritage site
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/heritage-sites/:slug
+  body: none
+  auth: inherit
+}
+
+params:path {
+  slug: 
+}
+
+settings {
+  forwardAuthorizationHeader: false
+}
+
+example {
+  name: 200 Response
+  description: Heritage site
+  
+  request: {
+    url: {{baseUrl}}/api/v1/heritage-sites/:slug
+    method: GET
+    mode: none
+    params:path: {
+      slug: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 200
+      text: OK
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "data": {
+            "id": 0,
+            "name": "",
+            "slug": "",
+            "description": "",
+            "cover_image_url": ""
+          }
+        }
+      '''
+    }
+  }
+}
+
+example {
+  name: 404 Response
+  description: Heritage site not found
+  
+  request: {
+    url: {{baseUrl}}/api/v1/heritage-sites/:slug
+    method: GET
+    mode: none
+    params:path: {
+      slug: 
+    }
+  }
+  
+  response: {
+    headers: {
+      Content-Type: application/json
+    }
+  
+    status: {
+      code: 404
+      text: Not Found
+    }
+  
+    body: {
+      type: json
+      content: '''
+        {
+          "error": {
+            "code": "",
+            "message": "",
+            "details": {}
+          }
+        }
+      '''
+    }
+  }
+}

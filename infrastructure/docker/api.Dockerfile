@@ -2,9 +2,9 @@ FROM composer:2.10.2 AS composer
 
 FROM php:8.4-cli-alpine
 
-RUN apk add --no-cache libpq libxml2 oniguruma \
-    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS libpq-dev libxml2-dev oniguruma-dev \
-    && docker-php-ext-install -j$(nproc) dom mbstring pdo_pgsql \
+RUN apk add --no-cache icu-libs libpq libxml2 libzip oniguruma \
+    && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS icu-dev libpq-dev libxml2-dev libzip-dev oniguruma-dev \
+    && docker-php-ext-install -j$(nproc) dom intl mbstring pdo_pgsql zip \
     && pecl install redis-6.2.0 \
     && docker-php-ext-enable redis \
     && apk del .build-deps

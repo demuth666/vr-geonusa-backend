@@ -1,13 +1,13 @@
-# PRD — VR-GeoNusa Backend & Machine Learning V1
+# PRD — VR-GeoNusa Backend, Admin Panel & Machine Learning V1
 
 ## 1. Document Status
 
-**Product:** VR-GeoNusa
-**Scope:** Backend + Machine Learning
-**Version:** V1 / Borobudur
-**Status:** Initial Engineering Baseline
-**Frontend:** Dikerjakan oleh tim terpisah
-**Primary destination:** Candi Borobudur
+**Product:** VR-GeoNusa  
+**Scope:** Backend API + Filament Admin Panel + Machine Learning  
+**Version:** V1 / Borobudur  
+**Status:** Engineering Baseline / Frozen V1  
+**Student Frontend:** Dikerjakan oleh tim frontend terpisah  
+**Primary Destination:** Candi Borobudur  
 
 ---
 
@@ -15,179 +15,298 @@
 
 VR-GeoNusa adalah platform pembelajaran berbasis Virtual Reality/WebXR yang membantu siswa SMP mempelajari konsep geometri melalui eksplorasi situs warisan budaya.
 
-Versi pertama difokuskan pada **Candi Borobudur**, menggunakan foto panorama 360° yang telah tersedia.
+Versi pertama difokuskan pada **Candi Borobudur** menggunakan foto panorama 360° yang telah tersedia.
 
-Siswa akan:
+Student journey V1:
 
-1. membuka landing page,
-2. memilih Candi Borobudur,
-3. login,
-4. mengikuti pretest,
-5. menjelajahi panorama,
-6. melakukan identifikasi elemen arsitektur menggunakan Machine Learning,
-7. melihat hubungan elemen budaya dengan bangun ruang,
-8. mengerjakan micro quiz,
-9. menyelesaikan posttest,
-10. mengisi kuesioner self-efficacy.
+```text
+Landing Page
+    ↓
+Borobudur Detail
+    ↓
+Login
+    ↓
+Borobudur Intro
+    ↓
+Pretest
+    ↓
+Panorama Exploration
+    ↓
+ML Identification
+    ↓
+Geometry Learning Material
+    ↓
+Micro Quiz
+    ↓
+Posttest
+    ↓
+Self-Efficacy
+    ↓
+Result
+```
 
-Backend bertanggung jawab atas seluruh state pembelajaran, data penelitian, penilaian, keamanan sesi, data heritage, dan integrasi Machine Learning.
+Backend bertanggung jawab atas seluruh business logic, state pembelajaran, data penelitian, penilaian, keamanan sesi, data heritage, integrasi Machine Learning, serta back-office internal melalui Filament.
 
----
-
-# 3. V1 Scope
-
-## In Scope
-
-### Identity
-
-* Student authentication
-* Student profile
-* School
-* Classroom
-* Research respondent code
-
-### Heritage
-
-* Heritage site
-* Heritage area
-* Panorama node
-* Panorama navigation graph
-* Heritage object
-* Geometry mapping
-
-### Learning
-
-* Learning session
-* Session resume
-* Learning objectives
-* Learning material
-* Micro quiz
-* Progress tracking
-* Activity events
-
-### Research
-
-* Pretest
-* Posttest
-* Self-efficacy questionnaire
-* Research participant
-* Server-side scoring
-* Research-safe respondent identifier
-
-### Machine Learning
-
-* Image inference endpoint
-* Model versioning
-* Detection result
-* Confidence score
-* Inference latency
-* Total request latency
-* Camera metadata
-* Inference logging
-
-### Infrastructure
-
-* PostgreSQL
-* Redis
-* Object storage abstraction
-* Docker Compose
-* Automated tests
-* OpenAPI contract
+Student frontend dikerjakan oleh tim terpisah dan mengonsumsi REST API berdasarkan OpenAPI contract.
 
 ---
 
-# 4. Out of Scope V1
+# 3. Team Ownership
 
-Tidak dikerjakan pada fase awal:
+## Backend / ML Team
 
-* Prambanan
-* 3D geometry interaction
-* teacher dashboard lengkap
-* leaderboard
-* gamification
-* certificate
-* offline mode
-* mobile native application
-* continuous frame-by-frame ML inference
-* ML training melalui web application
-* dataset annotation UI
-* advanced analytics dashboard
-* multi-language content
+Bertanggung jawab atas:
+
+```text
+Laravel REST API
+PostgreSQL
+Redis
+Filament Admin Panel
+Teacher/Researcher back-office
+Authentication logic
+Authorization
+Learning session state
+Assessment scoring
+Research data integrity
+OpenAPI contract
+FastAPI ML service
+ML training/evaluation
+Laravel ↔ ML integration
+Object storage integration
+```
+
+## Student Frontend Team
+
+Bertanggung jawab atas:
+
+```text
+Landing Page
+Borobudur Detail
+Login UI
+Borobudur Intro
+Pretest UI
+Panorama 360° / WebXR
+Panorama navigation UI
+ML identification UI
+Learning material UI
+Micro Quiz UI
+Progress UI
+Posttest UI
+Self-Efficacy UI
+Result Page
+```
+
+## Shared Contract
+
+Titik integrasi kedua tim adalah:
+
+```text
+contracts/openapi.yaml
+```
+
+Frontend tidak boleh mengarang business rule atau response structure permanen untuk menutupi API yang belum tersedia.
+
+Jika frontend membutuhkan data baru:
+
+```text
+Frontend raises requirement
+        ↓
+Backend reviews contract
+        ↓
+OpenAPI updated
+        ↓
+Backend implementation
+        ↓
+Frontend consumption
+```
 
 ---
 
-# 5. Technology Stack
+# 4. V1 Scope
 
-## Backend
+## Identity & School
 
-* Laravel
-* PHP
-* Laravel Sanctum
-* PostgreSQL
-* Redis
-* Laravel Queue
-* Laravel Storage abstraction
+- Student authentication
+- Student profile
+- School
+- Classroom
+- Classroom membership
+- Research respondent code
+- Role-based access for super admin, researcher, teacher, student
+
+## Heritage
+
+- Heritage site
+- Heritage area
+- Panorama node
+- Panorama navigation graph
+- Heritage object
+- Panorama object annotation
+- Geometry mapping
+- Learning objective mapping
+
+## Learning
+
+- Learning session
+- Session resume
+- Learning objectives
+- Learning material
+- Micro quiz
+- Progress tracking
+- Activity events
+
+## Research
+
+- Research study
+- Research participant
+- Pretest
+- Posttest
+- Self-efficacy questionnaire
+- Server-side scoring
+- Research-safe respondent identifier
+
+## Filament Back-office
+
+- Super admin panel
+- Heritage content management
+- Panorama node/link management
+- Geometry content management
+- Learning material management
+- Quiz management
+- Research instrument management
+- Research participant management
+- School/class/student management
+- ML model version monitoring
+- ML inference log monitoring
+- Basic teacher/researcher access based on role/policy
 
 ## Machine Learning
 
-* Python
-* FastAPI
-* PyTorch
-* YOLO
-* OpenCV
-* ONNX optional
+- Image inference endpoint
+- Model versioning
+- Detection result
+- Confidence score
+- Inference latency
+- Total request latency
+- Camera metadata
+- Inference logging
+- Training/evaluation pipeline separated from runtime inference
+
+## Infrastructure
+
+- PostgreSQL
+- Redis
+- Object storage abstraction
+- MinIO for local development
+- Docker Compose
+- Automated tests
+- OpenAPI contract
+- GitHub Actions
+- Nginx for deployment layer
+
+---
+
+# 5. Out of Scope V1
+
+Tidak dikerjakan pada fase awal:
+
+- Prambanan experience
+- 3D geometry interaction
+- advanced teacher analytics dashboard
+- advanced researcher analytics dashboard
+- advanced charts and comparative analytics
+- leaderboard
+- gamification
+- certificate
+- offline mode
+- native mobile application
+- continuous frame-by-frame ML inference
+- ML training melalui web application
+- dataset annotation UI
+- custom React admin dashboard
+- multi-language content
+- Kubernetes
+- microservice decomposition beyond the separate ML service
+
+---
+
+# 6. Technology Stack
+
+## Backend
+
+- Laravel
+- PHP
+- Laravel Sanctum
+- Filament
+- PostgreSQL
+- Redis
+- Laravel Queue
+- Laravel Storage abstraction
+
+## Machine Learning
+
+- Python
+- FastAPI
+- PyTorch
+- YOLO
+- OpenCV
+- ONNX optional
 
 ## Storage
 
 Development:
 
-* MinIO
+- MinIO
 
 Production:
 
-* Cloudflare R2 atau S3-compatible storage
+- Cloudflare R2 atau S3-compatible storage
 
 ## Infrastructure
 
-* Docker Compose
-* Nginx
-* GitHub Actions
+- Docker Compose
+- Nginx
+- GitHub Actions
 
 ## API Contract
 
-* REST
-* OpenAPI 3.x
-* `/api/v1`
+- REST
+- OpenAPI 3.x
+- `/api/v1`
 
 ---
 
-# 6. System Architecture
+# 7. System Architecture
 
 ```text
-Frontend Team
-     │
-     │ HTTPS / REST
-     ▼
-Laravel API
-     │
-     ├──────── PostgreSQL
-     │
-     ├──────── Redis
-     │
-     ├──────── Object Storage
-     │
-     └──────── ML Service
-                   │
-                   ▼
-              FastAPI
-                   │
-                   ▼
-               ML Model
+Student Frontend Team
+        │
+        │ HTTPS / REST
+        ▼
+   Laravel Application
+        │
+        ├── REST API
+        │     └── Student Frontend
+        │
+        ├── Filament
+        │     ├── Super Admin
+        │     ├── Researcher
+        │     └── Teacher
+        │
+        ├── PostgreSQL
+        ├── Redis
+        ├── Object Storage
+        │
+        └── ML Integration
+              │
+              ▼
+          FastAPI ML
+              │
+              ▼
+            Model
 ```
 
-Frontend tidak berkomunikasi langsung dengan ML service.
-
-Semua request ML harus melalui Laravel.
+Frontend tidak pernah berkomunikasi langsung dengan ML service.
 
 ```text
 Frontend
@@ -205,9 +324,23 @@ Frontend
 
 ML service tidak diperbolehkan mengakses database aplikasi secara langsung.
 
+Filament dan REST API harus menggunakan business logic/domain layer yang sama.
+
+```text
+Student REST API ──┐
+                   │
+                   ▼
+           Application / Domain
+                   ▲
+                   │
+Filament Admin ─────┘
+```
+
+Business rules tidak boleh diduplikasi secara terpisah di API Controller dan Filament Resource.
+
 ---
 
-# 7. Repository Architecture
+# 8. Repository Architecture
 
 ```text
 vr-geonusa/
@@ -215,6 +348,10 @@ vr-geonusa/
 ├── apps/
 │   └── api/
 │       ├── app/
+│       │   ├── Domain/
+│       │   ├── Filament/
+│       │   ├── Http/
+│       │   └── Infrastructure/
 │       ├── database/
 │       ├── routes/
 │       └── tests/
@@ -223,9 +360,9 @@ vr-geonusa/
 │   └── ml/
 │       ├── app/
 │       ├── inference/
+│       ├── preprocessing/
 │       ├── training/
 │       ├── evaluation/
-│       ├── preprocessing/
 │       └── tests/
 │
 ├── contracts/
@@ -249,9 +386,11 @@ vr-geonusa/
 
 ---
 
-# 8. Backend Domains
+# 9. Backend Architecture
 
-Backend menggunakan modular monolith.
+Backend menggunakan **modular monolith**.
+
+Domain utama:
 
 ```text
 Identity
@@ -262,6 +401,8 @@ Learning
 Research
 MachineLearning
 ```
+
+Filament bukan domain terpisah. Filament adalah presentation/back-office layer yang menggunakan domain yang sama dengan REST API.
 
 Suggested structure:
 
@@ -278,29 +419,34 @@ app/
 │   └── MachineLearning/
 │
 ├── Http/
+├── Filament/
 ├── Infrastructure/
 └── Providers/
 ```
 
-Business logic tidak diletakkan langsung di controller.
-
-Controller hanya bertanggung jawab terhadap:
+Controllers harus tipis:
 
 ```text
-HTTP request
+HTTP Request
     ↓
-validation
+Validation
     ↓
-application action
+Application Action
     ↓
-HTTP response
+Domain Logic
+    ↓
+Persistence / External Service
+    ↓
+HTTP Response
 ```
+
+Jangan membuat abstraction tanpa use case nyata.
 
 ---
 
-# 9. Core Entities
+# 10. Core Entities
 
-## Identity
+## Identity & School
 
 ```text
 User
@@ -317,6 +463,7 @@ ResearchStudy
 ResearchParticipant
 AssessmentInstrument
 AssessmentItem
+AssessmentOption
 AssessmentAttempt
 AssessmentAnswer
 ```
@@ -329,6 +476,7 @@ HeritageArea
 PanoramaNode
 PanoramaLink
 HeritageObject
+PanoramaObjectAnnotation
 ```
 
 ## Geometry
@@ -344,7 +492,6 @@ LearningObjective
 ```text
 LearningSession
 ActivityEvent
-
 Quiz
 Question
 QuestionOption
@@ -363,55 +510,43 @@ MLDetection
 
 ---
 
-# 10. Critical Data Rules
+# 11. Critical Data Rules
 
-## Student identity
+## Student Identity vs Research Participant
 
 Data identitas siswa dan data penelitian harus dipisahkan.
 
 ```text
 StudentProfile
-
-name
-student_number
-school
+├── name
+├── student_number
+└── school
 ```
 
 berbeda dengan:
 
 ```text
 ResearchParticipant
-
-respondent_code
+└── respondent_code
 ```
 
 Data assessment menggunakan `research_participant_id`, bukan nama atau NIS secara langsung.
 
----
-
-## Heritage vs Geometry
+## Heritage Object vs Geometry Shape
 
 Elemen budaya bukan bangun geometri secara literal.
 
 ```text
 HeritageObject
 Stupa
-```
-
-dipetakan melalui:
-
-```text
+    ↓
 HeritageGeometryMapping
-```
-
-menjadi:
-
-```text
+    ↓
 GeometryShape
 Setengah Bola
 ```
 
-Hubungannya:
+Hubungannya menggunakan semantics:
 
 ```text
 "didekati sebagai"
@@ -419,7 +554,7 @@ Hubungannya:
 
 ---
 
-# 11. Learning Session State Machine
+# 12. Learning Session State Machine
 
 Learning session adalah source of truth perjalanan siswa.
 
@@ -435,9 +570,9 @@ SELF_EFFICACY
 COMPLETED
 ```
 
-Backend mengontrol state transition.
+Backend mengontrol seluruh state transition.
 
-Frontend tidak boleh mengubah state secara langsung.
+Frontend tidak boleh mengubah phase secara langsung.
 
 Tidak diperbolehkan:
 
@@ -446,11 +581,11 @@ PATCH /session
 phase = completed
 ```
 
-State hanya berubah karena action yang valid.
+State hanya berubah sebagai konsekuensi action yang valid.
 
 ---
 
-# 12. Session Security
+# 13. Session Security
 
 Ketika learning session dibuat, backend menghasilkan random session write token.
 
@@ -470,13 +605,11 @@ request validation
 action
 ```
 
-Raw token tidak disimpan di database.
-
-Hanya hash token yang disimpan.
+Raw token tidak disimpan di database. Hanya hash token yang disimpan.
 
 ---
 
-# 13. Assessment Rules
+# 14. Assessment Rules
 
 Ada dua kategori assessment.
 
@@ -496,14 +629,13 @@ Micro Quiz
 
 Keduanya tidak boleh dicampur.
 
----
+### Pretest / Posttest
 
-## Pretest / Posttest
-
-Frontend hanya menerima:
+Frontend menerima:
 
 ```text
-question
+item id
+question text
 option id
 option text
 ```
@@ -522,26 +654,28 @@ item_id
 selected_option_id
 ```
 
-Backend menghitung nilai.
+Backend menghitung nilai dan mengunci submitted attempt.
 
----
-
-## Micro Quiz
+### Micro Quiz
 
 Micro quiz juga dinilai oleh backend.
 
-Namun setelah answer disubmit, backend boleh mengembalikan:
+Setelah jawaban disubmit, backend boleh mengembalikan:
 
 ```text
 correct / incorrect
 feedback
 ```
 
-agar siswa mendapat feedback pembelajaran.
+agar siswa mendapat formative feedback.
+
+### Self-Efficacy
+
+Self-efficacy tidak memiliki jawaban benar/salah dan menggunakan assessment engine yang sama dengan item type yang sesuai.
 
 ---
 
-# 14. Panorama Model
+# 15. Panorama Model
 
 Panorama menggunakan graph.
 
@@ -552,12 +686,7 @@ Panorama A
     └── Panorama C
 ```
 
-Bukan sekadar:
-
-```text
-previous
-next
-```
+Bukan sekadar `previous` / `next`.
 
 `PanoramaLink` menyimpan:
 
@@ -569,9 +698,11 @@ pitch
 label
 ```
 
+Panorama binary asset tidak disimpan di PostgreSQL.
+
 ---
 
-# 15. Machine Learning Flow
+# 16. Machine Learning Flow
 
 ```text
 Student melihat panorama
@@ -592,24 +723,24 @@ Laravel menerima detection
         ↓
 Laravel menyimpan inference
         ↓
-Laravel melakukan geometry mapping
+Laravel melakukan heritage/geometry mapping
         ↓
 Frontend menerima result
 ```
 
-Tidak menggunakan continuous inference setiap frame.
-
-Inference bersifat:
+Inference V1 bersifat:
 
 ```text
 student-triggered
 ```
 
+Bukan continuous inference setiap frame.
+
 ---
 
-# 16. ML Prediction Input
+# 17. ML Prediction Contract
 
-Minimum input:
+## Input Minimum
 
 ```text
 image
@@ -619,40 +750,33 @@ camera_pitch
 camera_fov
 ```
 
----
-
-# 17. ML Prediction Output
-
-ML service mengembalikan:
+## ML Service Output
 
 ```text
 model_version
-
 inference_ms
-
 detections[]
     class
     confidence
     bounding_box
 ```
 
-Laravel bertanggung jawab menyimpan:
+## Laravel Persistence
+
+Laravel menyimpan:
 
 ```text
 learning_session
-
 model_version
-
 panorama_node
-
 camera metadata
-
 inference time
-
 total latency
-
 detections
+confidence
 ```
+
+Setiap prediction harus dapat ditelusuri ke model version yang digunakan.
 
 ---
 
@@ -661,22 +785,21 @@ detections
 Training pipeline dan inference runtime harus dipisahkan.
 
 ```text
+preprocessing/
 training/
 evaluation/
-preprocessing/
+inference/
 ```
 
-tidak boleh bergantung pada FastAPI.
+FastAPI hanya menjadi inference adapter.
 
-FastAPI hanya bertanggung jawab sebagai inference adapter.
-
-Core detector harus dapat dipanggil:
+Core detector harus dapat dipanggil tanpa HTTP:
 
 ```python
 detector.predict(image)
 ```
 
-tanpa HTTP.
+ML service tidak menangani authentication, learning progress, research scoring, atau direct application database access.
 
 ---
 
@@ -690,7 +813,7 @@ object-level bounding box
 
 bukan label per panorama.
 
-Dataset harus mendukung:
+Dataset harus dipisahkan menjadi:
 
 ```text
 train
@@ -702,21 +825,87 @@ Evaluation minimal menghasilkan:
 
 ```text
 confusion matrix
-
 precision per class
-
 recall per class
-
 F1 per class
-
 macro F1
+dataset class distribution
 ```
+
+Hindari data leakage antara crop yang sangat mirip dari sumber panorama yang sama.
 
 Model artifact harus versioned.
 
 ---
 
-# 20. API Principles
+# 20. Filament Back-office V1
+
+Filament berfungsi sebagai back-office operasional, bukan analytics product penuh.
+
+## Identity & School
+
+```text
+SchoolResource
+ClassroomResource
+StudentResource
+```
+
+## Heritage
+
+```text
+HeritageSiteResource
+HeritageAreaResource
+PanoramaNodeResource
+PanoramaLinkResource
+HeritageObjectResource
+```
+
+## Geometry & Learning
+
+```text
+GeometryShapeResource
+HeritageGeometryMappingResource
+LearningObjectiveResource
+QuizResource
+QuestionResource
+```
+
+## Research
+
+```text
+ResearchStudyResource
+ResearchParticipantResource
+AssessmentInstrumentResource
+```
+
+## Machine Learning
+
+```text
+MLModelResource
+MLModelVersionResource
+MLInferenceRunResource
+```
+
+Tidak semua resource harus dibuat sekaligus. Resource mengikuti phase/domain yang sudah tersedia.
+
+Prioritas Filament V1:
+
+```text
+1. Heritage content
+2. Panorama configuration
+3. Geometry mapping
+4. Learning/quiz content
+5. Research instruments
+6. Research participants
+7. School/student management
+8. ML model/inference monitoring
+```
+
+Teacher/researcher pada V1 cukup menggunakan role/policy untuk melihat atau mengelola data sesuai kebutuhan. Advanced dashboard ditunda sampai kebutuhan nyata dan data pilot tersedia.
+
+---
+
+# 21. API Principles
 
 Prefix:
 
@@ -743,17 +932,19 @@ Error:
 }
 ```
 
-Frontend contract berasal dari:
+Student frontend contract berasal dari:
 
 ```text
 contracts/openapi.yaml
 ```
 
-API yang berubah harus mengubah OpenAPI contract dalam commit yang sama.
+Perubahan API harus memperbarui OpenAPI contract pada perubahan yang sama.
+
+Filament tidak menggunakan OpenAPI sebagai transport karena berjalan di dalam Laravel application yang sama.
 
 ---
 
-# 21. Core API V1
+# 22. Core Student API V1
 
 ## Public
 
@@ -784,33 +975,28 @@ GET  /learning-sessions/{id}/progress
 ```text
 GET  /heritage-sites/{slug}/areas
 GET  /panorama-nodes/{id}
-
 POST /learning-sessions/{id}/panorama-visits
 ```
 
-## ML
+## Machine Learning
 
 ```text
 POST /learning-sessions/{id}/ml-predictions
 ```
 
-## Learning
+## Learning Material
 
 ```text
 GET  /heritage-objects/{id}/learning-material
-
 POST /learning-sessions/{id}/materials/{objectId}/viewed
 ```
 
-## Quiz
+## Micro Quiz
 
 ```text
 GET  /quizzes/{id}
-
 POST /learning-sessions/{id}/quiz-attempts
-
 PUT  /quiz-attempts/{attemptId}/answers/{questionId}
-
 POST /quiz-attempts/{attemptId}/submit
 ```
 
@@ -818,11 +1004,8 @@ POST /quiz-attempts/{attemptId}/submit
 
 ```text
 POST /learning-sessions/{id}/assessment-attempts
-
 GET  /assessment-attempts/{id}
-
 PUT  /assessment-attempts/{attemptId}/answers/{itemId}
-
 POST /assessment-attempts/{attemptId}/submit
 ```
 
@@ -840,61 +1023,51 @@ GET /learning-sessions/{id}/result
 
 ---
 
-# 22. Backend Testing Requirements
+# 23. Backend Testing Requirements
 
 Critical flows harus mempunyai feature tests.
 
-Minimal test:
+Minimal:
 
 ```text
 student can login
-
 student can create own session
-
 student cannot access another student's session
-
 invalid session token is rejected
-
 pretest cannot be skipped
-
 posttest cannot start before exploration completes
-
 frontend cannot submit its own score
-
 submitted assessment cannot be modified
-
 ML request records model version
-
 ML request records latency
-
 ML service failure does not crash learning session
+Filament unauthorized user cannot access restricted resources
+teacher cannot access restricted data outside allowed scope
+researcher access follows configured policies
 ```
+
+Filament authorization harus menggunakan Laravel policies/permissions yang relevan dan tidak mengandung business-rule duplicate.
 
 ---
 
-# 23. ML Testing Requirements
+# 24. ML Testing Requirements
 
 Minimum:
 
 ```text
 preprocessing unit tests
-
 detector interface tests
-
 API schema tests
-
 invalid-image tests
-
 model-loading tests
-
 prediction response contract tests
 ```
 
-Model quality evaluation terpisah dari API tests.
+Model quality evaluation terpisah dari runtime API tests.
 
 ---
 
-# 24. Definition of Done
+# 25. Definition of Done
 
 Sebuah backend feature dianggap selesai hanya jika:
 
@@ -904,9 +1077,15 @@ Sebuah backend feature dianggap selesai hanya jika:
 4. authorization tersedia,
 5. feature/unit tests tersedia,
 6. test suite lulus,
-7. API contract diperbarui,
+7. OpenAPI contract diperbarui jika API berubah,
 8. tidak ada secret atau credential hardcoded,
 9. relevant documentation diperbarui.
+
+Jika feature mempunyai Filament management UI:
+
+10. Filament resource/action tersedia sesuai scope,
+11. authorization/policy diterapkan,
+12. Filament menggunakan application/domain logic yang sama dan tidak menduplikasi business logic.
 
 Sebuah ML feature dianggap selesai hanya jika:
 
@@ -921,9 +1100,9 @@ Sebuah ML feature dianggap selesai hanya jika:
 
 ---
 
-# 25. MVP Engineering Target
+# 26. MVP Engineering Targets
 
-Vertical slice pertama:
+## Vertical Slice 1 — Core Student Flow
 
 ```text
 Student authentication
@@ -937,7 +1116,7 @@ Load one panorama metadata
 Record panorama visit
 ```
 
-Vertical slice kedua:
+## Vertical Slice 2 — Learning Content
 
 ```text
 Heritage object
@@ -949,7 +1128,7 @@ Learning material
 Micro quiz
 ```
 
-Vertical slice ketiga:
+## Vertical Slice 3 — ML Integration
 
 ```text
 Image request
@@ -965,21 +1144,84 @@ Prediction persistence
 
 Model ML sungguhan baru menggantikan dummy detector setelah integration contract terbukti stabil.
 
+## Vertical Slice 4 — Back-office
+
+```text
+Filament login
+        ↓
+Manage Borobudur heritage site
+        ↓
+Manage 1 area
+        ↓
+Manage 3 panorama nodes
+        ↓
+Manage panorama links
+        ↓
+REST API reflects the changes
+```
+
+Data yang diubah melalui Filament harus menjadi source data yang sama dengan data yang dikonsumsi Student REST API.
+
 ---
 
-# 26. V1 Success Criteria
+# 27. Development Content for V1
 
-V1 backend dianggap memiliki fondasi yang benar ketika:
+Jangan menunggu semua data Borobudur siap.
 
-* backend dapat dijalankan dari fresh clone,
-* seluruh dependency local tersedia melalui Docker,
-* migrations dapat berjalan dari database kosong,
-* student dapat menyelesaikan satu session end-to-end,
-* session state tidak dapat dilewati,
-* grading seluruh assessment dilakukan server-side,
-* research identity menggunakan respondent code,
-* panorama navigation data dapat diberikan ke frontend,
-* ML service dapat dipanggil melalui Laravel,
-* inference tersimpan dengan model version dan latency,
-* OpenAPI contract dapat digunakan tim frontend,
-* critical test suite lulus.
+Development awal cukup menggunakan:
+
+```text
+1 heritage site
+1 area
+3 panorama nodes
+1 heritage object
+1 geometry mapping
+1 learning objective
+1 learning material
+1 micro quiz
+1 pretest instrument
+1 posttest instrument
+1 self-efficacy instrument
+1 dummy ML detector
+```
+
+Setelah vertical slice end-to-end stabil, konten dapat diperluas tanpa mengubah architecture.
+
+---
+
+# 28. V1 Success Criteria
+
+V1 dianggap memiliki fondasi yang benar ketika:
+
+- backend dapat dijalankan dari fresh clone,
+- seluruh dependency local tersedia melalui Docker,
+- migrations dapat berjalan dari database kosong,
+- student dapat menyelesaikan satu session end-to-end,
+- session state tidak dapat dilewati,
+- grading seluruh assessment dilakukan server-side,
+- research identity menggunakan respondent code,
+- panorama navigation bersifat data-driven dan graph-based,
+- ML service dapat dipanggil melalui Laravel,
+- inference tersimpan dengan model version dan latency,
+- OpenAPI contract dapat digunakan tim frontend,
+- Filament dapat mengelola konten Borobudur tanpa edit source code,
+- perubahan heritage/panorama melalui Filament muncul melalui REST API,
+- basic role access untuk super admin/researcher/teacher dapat diterapkan tanpa custom frontend terpisah,
+- critical backend dan ML test suite lulus.
+
+---
+
+# 29. Main Engineering Principles
+
+1. Laravel adalah source of truth untuk business logic.
+2. Filament dan REST API menggunakan application/domain logic yang sama.
+3. Student frontend hanya merender server state dan mengirim user actions.
+4. Research scoring tidak pernah dihitung frontend.
+5. Student identity dipisahkan dari research results.
+6. Panorama navigation bersifat graph-based.
+7. Heritage object dan geometry shape adalah konsep berbeda.
+8. Frontend tidak pernah memanggil ML service secara langsung.
+9. ML prediction selalu dapat ditelusuri ke model version.
+10. Training/evaluation ML dipisahkan dari inference API.
+11. Implementasi dilakukan per vertical slice dan diuji sebelum pindah phase.
+12. Jangan menambah abstraction, dependency, atau service tanpa kebutuhan nyata.
