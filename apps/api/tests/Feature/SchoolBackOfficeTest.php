@@ -206,12 +206,4 @@ class SchoolBackOfficeTest extends TestCase
         $this->assertFalse($classroom->studentProfiles()->whereKey($otherProfile->id)->exists());
     }
 
-    private function createUser(UserRole $role): User
-    {
-        return User::create([
-            'email' => "{$role->value}-".str()->random(8).'@example.test',
-            'password' => 'password',
-            'role' => $role,
-        ]);
-    }
 }

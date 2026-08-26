@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Domain\Heritage\Models\HeritageArea;
 use App\Domain\Heritage\Models\HeritageSite;
 use App\Domain\Identity\Enums\UserRole;
-use App\Domain\Identity\Models\User;
 use App\Filament\Resources\HeritageAreas\HeritageAreaResource;
 use App\Filament\Resources\HeritageAreas\Pages\ManageHeritageAreas;
 use App\Filament\Resources\HeritageSites\HeritageSiteResource;
@@ -154,12 +153,4 @@ class HeritageBackOfficeTest extends TestCase
             ]);
     }
 
-    private function createUser(UserRole $role): User
-    {
-        return User::create([
-            'email' => "{$role->value}-".str()->random(8).'@example.test',
-            'password' => 'password',
-            'role' => $role,
-        ]);
-    }
 }

@@ -31,9 +31,6 @@ class AdminPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
-            ->widgets([
-
-            ])
             ->middleware([
                 SetFilamentLocale::class,
                 EncryptCookies::class,
