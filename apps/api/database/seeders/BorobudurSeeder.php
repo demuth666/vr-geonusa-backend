@@ -17,7 +17,7 @@ class BorobudurSeeder extends Seeder
             [
                 'name' => 'Candi Borobudur',
                 'description' => 'Situs warisan budaya untuk pembelajaran geometri berbasis panorama.',
-                'cover_image_url' => 'http://127.0.0.1:9000/vr-geonusa-dev/heritage/borobudur-cover.jpg',
+                'cover_image_url' => 'heritage/borobudur-cover.jpg',
             ],
         );
 

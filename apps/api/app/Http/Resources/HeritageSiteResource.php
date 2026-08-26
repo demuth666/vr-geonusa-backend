@@ -15,7 +15,7 @@ class HeritageSiteResource extends JsonResource
             'name' => $this->name,
             'slug' => $this->slug,
             'description' => $this->description,
-            'cover_image_url' => $this->cover_image_url,
+            'cover_image_url' => $this->coverImageUrl(),
         ];
     }
 }

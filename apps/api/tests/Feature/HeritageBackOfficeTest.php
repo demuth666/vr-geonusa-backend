@@ -13,7 +13,9 @@ use Database\Seeders\BorobudurSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -25,7 +27,9 @@ class HeritageBackOfficeTest extends TestCase
     {
         parent::setUp();
 
+        Storage::fake('s3', ['url' => 'http://storage.test/vr-geonusa-dev']);
         $this->seed(BorobudurSeeder::class);
+        Storage::disk('s3')->put(HeritageSite::query()->sole()->cover_image_url, 'cover');
         Filament::setCurrentPanel(Filament::getPanel('admin'));
     }
 
@@ -100,7 +104,7 @@ class HeritageBackOfficeTest extends TestCase
             [
                 'name' => $site->name,
                 'description' => 'Deskripsi Borobudur dari Filament.',
-                'cover_image_url' => $site->cover_image_url,
+                'cover_image_url' => [$site->cover_image_url],
             ],
         )
             ->assertHasNoActionErrors();
@@ -153,4 +157,34 @@ class HeritageBackOfficeTest extends TestCase
             ]);
     }
 
+    public function test_super_admin_can_replace_the_stored_borobudur_cover(): void
+    {
+        $site = HeritageSite::query()->sole();
+        $oldPath = $site->cover_image_url;
+        $this->actingAs($this->createUser(UserRole::SuperAdmin));
+
+        Storage::disk('s3')->assertExists($oldPath);
+
+        $this->callFilamentAction(
+            Livewire::test(ManageHeritageSites::class),
+            TestAction::make('edit')->table($site),
+            [
+                'name' => $site->name,
+                'cover_image_url' => [
+                    UploadedFile::fake()->create('borobudur-new.jpg', 256, 'image/jpeg'),
+                ],
+                'description' => $site->description,
+            ],
+        )->assertHasNoActionErrors();
+
+        $newPath = $site->refresh()->cover_image_url;
+        $this->assertNotSame($oldPath, $newPath);
+        $this->assertStringStartsWith('heritage-sites/covers/', $newPath);
+        Storage::disk('s3')->assertMissing($oldPath);
+        Storage::disk('s3')->assertExists($newPath);
+
+        $this->getJson('/api/v1/heritage-sites/borobudur')
+            ->assertOk()
+            ->assertJsonPath('data.cover_image_url', "http://storage.test/vr-geonusa-dev/{$newPath}");
+    }
 }
