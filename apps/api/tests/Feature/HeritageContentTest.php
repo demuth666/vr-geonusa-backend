@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Domain\Heritage\Models\PanoramaNode;
 use Database\Seeders\BorobudurSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class HeritageContentTest extends TestCase
@@ -15,6 +16,7 @@ class HeritageContentTest extends TestCase
     {
         parent::setUp();
 
+        Storage::fake('s3', ['url' => 'http://127.0.0.1:9000/vr-geonusa-dev']);
         $this->seed(BorobudurSeeder::class);
     }
 

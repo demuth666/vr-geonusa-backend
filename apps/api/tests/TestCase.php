@@ -2,11 +2,11 @@
 
 namespace Tests;
 
+use App\Domain\Identity\Enums\UserRole;
+use App\Domain\Identity\Models\User;
 use Closure;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
-use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Arr;
 use Livewire\Features\SupportTesting\Testable;
 
 abstract class TestCase extends BaseTestCase
@@ -17,22 +17,15 @@ abstract class TestCase extends BaseTestCase
         string|TestAction $action,
         array|Closure $data,
     ): Testable {
-        $component->mountAction($action);
-        $state = $component->get('mountedActions.0.data');
-        $data = $data instanceof Closure ? $data($state) : $data;
+        return $component->mountAction($action)->fillForm($data)->callMountedAction();
+    }
 
-        foreach (Arr::dot($data) as $key => $value) {
-            if (! $value instanceof UploadedFile && ! (is_array($value) && ($value[0] ?? null) instanceof UploadedFile)) {
-                continue;
-            }
-
-            $path = "mountedActions.0.data.{$key}";
-            $component->set($path, $value);
-            Arr::set($data, $key, $component->get($path));
-        }
-
-        $component->set('mountedActions.0.data', $data);
-
-        return $component->callMountedAction();
+    protected function createUser(UserRole $role): User
+    {
+        return User::create([
+            'email' => "{$role->value}-".str()->random(8).'@example.test',
+            'password' => 'password',
+            'role' => $role,
+        ]);
     }
 }

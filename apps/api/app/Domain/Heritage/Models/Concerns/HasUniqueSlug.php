@@ -2,7 +2,6 @@
 
 namespace App\Domain\Heritage\Models\Concerns;
 
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 
@@ -32,7 +31,11 @@ trait HasUniqueSlug
     private function nextUniqueSlug(string $value): string
     {
         $base = Str::substr(Str::slug($value) ?: 'item', 0, 240);
-        $query = $this->slugScopeQuery(static::query());
+        $query = static::query();
+
+        foreach ($this->slugScopeColumns() as $column) {
+            $query->where($column, $this->getAttribute($column));
+        }
 
         if ($this->exists) {
             $query->where($this->getKeyName(), '!=', $this->getKey());
@@ -47,14 +50,5 @@ trait HasUniqueSlug
         }
 
         return $slug;
-    }
-
-    private function slugScopeQuery(Builder $query): Builder
-    {
-        foreach ($this->slugScopeColumns() as $column) {
-            $query->where($column, $this->getAttribute($column));
-        }
-
-        return $query;
     }
 }

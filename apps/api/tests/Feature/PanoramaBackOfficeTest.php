@@ -7,7 +7,6 @@ use App\Domain\Heritage\Models\HeritageSite;
 use App\Domain\Heritage\Models\PanoramaLink;
 use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Identity\Enums\UserRole;
-use App\Domain\Identity\Models\User;
 use App\Filament\Resources\PanoramaLinks\Pages\ManagePanoramaLinks;
 use App\Filament\Resources\PanoramaLinks\PanoramaLinkResource;
 use App\Filament\Resources\PanoramaNodes\Pages\ManagePanoramaNodes;
@@ -270,12 +269,4 @@ class PanoramaBackOfficeTest extends TestCase
         }
     }
 
-    private function createUser(UserRole $role): User
-    {
-        return User::create([
-            'email' => "{$role->value}-".str()->random(8).'@example.test',
-            'password' => 'password',
-            'role' => $role,
-        ]);
-    }
 }

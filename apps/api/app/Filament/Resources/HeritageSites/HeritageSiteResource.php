@@ -5,6 +5,7 @@ namespace App\Filament\Resources\HeritageSites;
 use App\Domain\Heritage\Models\HeritageSite;
 use App\Filament\Resources\HeritageSites\Pages\ManageHeritageSites;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
@@ -35,11 +36,17 @@ class HeritageSiteResource extends Resource
                 ->required()
                 ->maxLength(255)
                 ->helperText('Slug dibuat otomatis saat disimpan.'),
-            TextInput::make('cover_image_url')
-                ->label('URL Gambar Sampul')
+            FileUpload::make('cover_image_url')
+                ->label('Gambar Sampul')
+                ->disk('s3')
+                ->directory('heritage-sites/covers')
+                ->visibility('public')
+                ->image()
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
+                ->maxSize(12 * 1024)
+                ->preventFilePathTampering()
+                ->openable()
                 ->required()
-                ->url()
-                ->maxLength(255)
                 ->columnSpanFull(),
             Textarea::make('description')
                 ->label('Deskripsi')
@@ -65,7 +72,7 @@ class HeritageSiteResource extends Resource
                     ->sortable(),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->databaseTransaction(),
             ]);
     }
 

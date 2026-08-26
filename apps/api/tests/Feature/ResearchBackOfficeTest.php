@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Models\StudentProfile;
-use App\Domain\Identity\Models\User;
 use App\Domain\Research\Models\ResearchParticipant;
 use App\Domain\Research\Models\ResearchStudy;
 use App\Filament\Resources\ResearchParticipants\Pages\ManageResearchParticipants;
@@ -162,12 +161,4 @@ class ResearchBackOfficeTest extends TestCase
         $this->assertDatabaseCount('research_participants', 1);
     }
 
-    private function createUser(UserRole $role): User
-    {
-        return User::create([
-            'email' => "{$role->value}-".str()->random(8).'@example.test',
-            'password' => 'password',
-            'role' => $role,
-        ]);
-    }
 }

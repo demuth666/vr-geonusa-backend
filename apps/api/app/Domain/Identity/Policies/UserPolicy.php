@@ -32,11 +32,6 @@ class UserPolicy
         return $this->canManageStudent($user, $student);
     }
 
-    public function deleteAny(User $user): bool
-    {
-        return $user->role === UserRole::SuperAdmin;
-    }
-
     private function canManageStudent(User $user, User $student): bool
     {
         return $user->role === UserRole::SuperAdmin

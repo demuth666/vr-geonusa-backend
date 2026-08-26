@@ -33,8 +33,4 @@ class SchoolPolicy
         return $user->role === UserRole::SuperAdmin;
     }
 
-    public function deleteAny(User $user): bool
-    {
-        return $user->role === UserRole::SuperAdmin;
-    }
 }

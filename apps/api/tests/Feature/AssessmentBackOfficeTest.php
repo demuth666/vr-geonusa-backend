@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Models\StudentProfile;
-use App\Domain\Identity\Models\User;
 use App\Domain\Research\Models\AssessmentInstrument;
 use App\Domain\Research\Models\ResearchParticipant;
 use App\Domain\Research\Models\ResearchStudy;
@@ -142,15 +141,6 @@ class AssessmentBackOfficeTest extends TestCase
             ->assertHasActionErrors(['items']);
 
         $this->assertDatabaseCount('assessment_instruments', 0);
-    }
-
-    private function createUser(UserRole $role): User
-    {
-        return User::create([
-            'email' => "{$role->value}-".str()->random(8).'@example.test',
-            'password' => 'password',
-            'role' => $role,
-        ]);
     }
 
     /** @param array<string, mixed> $state */
