@@ -104,17 +104,23 @@ class ResearchBackOfficeTest extends TestCase
 
         $this->actingAs($this->createUser(UserRole::SuperAdmin));
 
-        Livewire::test(ManageResearchStudies::class)
-            ->callAction(TestAction::make('create'), data: ['name' => 'Borobudur Filament Study'])
+        $this->callFilamentAction(
+            Livewire::test(ManageResearchStudies::class),
+            'create',
+            ['name' => 'Borobudur Filament Study'],
+        )
             ->assertHasNoActionErrors();
 
         $study = ResearchStudy::query()->where('name', 'Borobudur Filament Study')->firstOrFail();
 
-        Livewire::test(ManageResearchParticipants::class)
-            ->callAction(TestAction::make('create'), data: [
+        $this->callFilamentAction(
+            Livewire::test(ManageResearchParticipants::class),
+            'create',
+            [
                 'research_study_id' => $study->id,
                 'student_profile_id' => $profile->id,
-            ])
+            ],
+        )
             ->assertHasNoActionErrors();
 
         $participant = ResearchParticipant::query()->where('research_study_id', $study->id)->firstOrFail();
@@ -143,11 +149,14 @@ class ResearchBackOfficeTest extends TestCase
 
         $this->actingAs($this->createUser(UserRole::SuperAdmin));
 
-        Livewire::test(ManageResearchParticipants::class)
-            ->callAction(TestAction::make('create'), data: [
+        $this->callFilamentAction(
+            Livewire::test(ManageResearchParticipants::class),
+            'create',
+            [
                 'research_study_id' => $study->id,
                 'student_profile_id' => $profile->id,
-            ])
+            ],
+        )
             ->assertHasActionErrors(['student_profile_id' => 'unique']);
 
         $this->assertDatabaseCount('research_participants', 1);

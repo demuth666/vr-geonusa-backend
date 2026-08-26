@@ -9,6 +9,7 @@ use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -16,25 +17,32 @@ class HeritageSiteResource extends Resource
 {
     protected static ?string $model = HeritageSite::class;
 
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
+
+    protected static string|\UnitEnum|null $navigationGroup = 'Konten Warisan Budaya';
+
+    protected static ?string $modelLabel = 'Situs Warisan';
+
+    protected static ?string $pluralModelLabel = 'Situs Warisan';
+
     protected static ?string $recordTitleAttribute = 'name';
 
     public static function form(Schema $schema): Schema
     {
         return $schema->components([
             TextInput::make('name')
-                ->required()
-                ->maxLength(255),
-            TextInput::make('slug')
+                ->label('Nama')
                 ->required()
                 ->maxLength(255)
-                ->unique(ignoreRecord: true),
+                ->helperText('Slug dibuat otomatis saat disimpan.'),
             TextInput::make('cover_image_url')
-                ->label('Cover image URL')
+                ->label('URL Gambar Sampul')
                 ->required()
                 ->url()
                 ->maxLength(255)
                 ->columnSpanFull(),
             Textarea::make('description')
+                ->label('Deskripsi')
                 ->rows(4)
                 ->columnSpanFull(),
         ]);
@@ -45,11 +53,14 @@ class HeritageSiteResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('name')
+                    ->label('Nama')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('slug')
+                    ->label('Slug')
                     ->searchable(),
                 TextColumn::make('updated_at')
+                    ->label('Diperbarui')
                     ->dateTime()
                     ->sortable(),
             ])

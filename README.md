@@ -22,6 +22,7 @@ docker compose exec -T api php artisan migrate --force
 
 Replace the placeholder passwords in `.env`, then copy the generated application key into
 `APP_KEY` in `apps/api/.env` before starting the services.
+Docker Compose creates the public development panorama bucket automatically before the API starts.
 
 ## Services
 

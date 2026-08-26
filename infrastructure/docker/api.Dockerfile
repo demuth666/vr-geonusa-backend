@@ -10,6 +10,7 @@ RUN apk add --no-cache icu-libs libpq libxml2 libzip oniguruma \
     && apk del .build-deps
 
 COPY --from=composer /usr/bin/composer /usr/bin/composer
+COPY infrastructure/docker/php-upload.ini /usr/local/etc/php/conf.d/uploads.ini
 
 WORKDIR /var/www/html
 
@@ -25,4 +26,4 @@ USER www-data
 
 EXPOSE 8000
 
-CMD ["php", "artisan", "serve", "--host=0.0.0.0", "--port=8000"]
+CMD ["php", "artisan", "serve", "--no-reload", "--host=0.0.0.0", "--port=8000"]

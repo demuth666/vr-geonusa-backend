@@ -2,6 +2,8 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Heritage\Models\HeritageArea;
+use App\Domain\Heritage\Models\HeritageSite;
 use App\Domain\Heritage\Models\PanoramaLink;
 use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Identity\Enums\UserRole;
@@ -14,7 +16,9 @@ use Database\Seeders\BorobudurSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -26,7 +30,12 @@ class PanoramaBackOfficeTest extends TestCase
     {
         parent::setUp();
 
+        Storage::fake('s3', ['url' => 'http://storage.test/vr-geonusa-dev']);
         $this->seed(BorobudurSeeder::class);
+        PanoramaNode::query()->each(fn (PanoramaNode $node) => Storage::disk('s3')->put(
+            $node->panorama_url,
+            'panorama',
+        ));
         Filament::setCurrentPanel(Filament::getPanel('admin'));
     }
 
@@ -99,23 +108,28 @@ class PanoramaBackOfficeTest extends TestCase
 
         $this->actingAs($this->createUser(UserRole::SuperAdmin));
 
-        Livewire::test(ManagePanoramaNodes::class)
-            ->callAction(TestAction::make('edit')->table($source), [
+        $this->callFilamentAction(
+            Livewire::test(ManagePanoramaNodes::class),
+            TestAction::make('edit')->table($source),
+            [
                 'heritage_area_id' => $source->heritage_area_id,
                 'name' => 'Pelataran Timur Borobudur',
-                'slug' => $source->slug,
-                'panorama_url' => $source->panorama_url,
-            ])
+                'panorama_url' => [$source->panorama_url],
+            ],
+        )
             ->assertHasNoActionErrors();
 
-        Livewire::test(ManagePanoramaLinks::class)
-            ->callAction('create', [
+        $this->callFilamentAction(
+            Livewire::test(ManagePanoramaLinks::class),
+            'create',
+            [
                 'source_node_id' => $source->id,
                 'target_node_id' => $target->id,
                 'label' => 'Menuju Pelataran Barat',
                 'yaw' => 135,
                 'pitch' => 2.5,
-            ])
+            ],
+        )
             ->assertHasNoActionErrors();
 
         $this->getJson("/api/v1/panorama-nodes/{$source->id}")
@@ -134,17 +148,126 @@ class PanoramaBackOfficeTest extends TestCase
 
         $this->actingAs($this->createUser(UserRole::SuperAdmin));
 
-        Livewire::test(ManagePanoramaLinks::class)
-            ->callAction('create', [
+        $this->callFilamentAction(
+            Livewire::test(ManagePanoramaLinks::class),
+            'create',
+            [
                 'source_node_id' => $link->source_node_id,
                 'target_node_id' => $link->target_node_id,
                 'label' => 'Duplicate edge',
                 'yaw' => $link->yaw,
                 'pitch' => $link->pitch,
-            ])
+            ],
+        )
             ->assertHasActionErrors(['target_node_id' => 'unique']);
 
         $this->assertDatabaseCount('panorama_links', 4);
+    }
+
+    public function test_filament_generates_unique_slugs_and_uploads_panorama_to_storage(): void
+    {
+        $area = HeritageArea::query()->firstOrFail();
+        $this->actingAs($this->createUser(UserRole::SuperAdmin));
+
+        foreach (['panorama.jpg', 'panorama-duplicate.jpg'] as $file) {
+            $this->callFilamentAction(
+                Livewire::test(ManagePanoramaNodes::class),
+                'create',
+                [
+                    'heritage_area_id' => $area->id,
+                    'name' => 'Panorama Upload',
+                    'panorama_url' => UploadedFile::fake()->create($file, 256, 'image/jpeg'),
+                ],
+            )->assertHasNoActionErrors();
+        }
+
+        $node = PanoramaNode::query()->where('slug', 'panorama-upload')->sole();
+        $duplicate = PanoramaNode::query()->where('slug', 'panorama-upload-2')->sole();
+        $path = $node->panorama_url;
+
+        $this->assertStringStartsWith('panoramas/', $path);
+        $this->assertFalse(filter_var($path, FILTER_VALIDATE_URL));
+        Storage::disk('s3')->assertExists($path);
+        Storage::disk('s3')->assertExists($duplicate->panorama_url);
+
+        $this->getJson("/api/v1/panorama-nodes/{$node->id}")
+            ->assertOk()
+            ->assertJsonPath('data.panorama_url', "http://storage.test/vr-geonusa-dev/{$path}");
+    }
+
+    public function test_panorama_upload_rejects_invalid_and_oversized_files(): void
+    {
+        $area = HeritageArea::query()->firstOrFail();
+        $this->actingAs($this->createUser(UserRole::SuperAdmin));
+
+        $this->callFilamentAction(
+            Livewire::test(ManagePanoramaNodes::class),
+            'create',
+            [
+                'heritage_area_id' => $area->id,
+                'name' => 'Invalid Panorama',
+                'panorama_url' => UploadedFile::fake()->create('panorama.pdf', 100, 'application/pdf'),
+            ],
+        )->assertHasActionErrors(['panorama_url']);
+
+        $this->callFilamentAction(
+            Livewire::test(ManagePanoramaNodes::class),
+            'create',
+            [
+                'heritage_area_id' => $area->id,
+                'name' => 'Oversized Panorama',
+                'panorama_url' => UploadedFile::fake()->create(
+                    'panorama.jpg',
+                    (12 * 1024) + 1,
+                    'image/jpeg',
+                ),
+            ],
+        )->assertHasActionErrors(['panorama_url']);
+
+        $this->assertDatabaseMissing('panorama_nodes', ['slug' => 'invalid-panorama']);
+        $this->assertDatabaseMissing('panorama_nodes', ['slug' => 'oversized-panorama']);
+    }
+
+    public function test_replacing_and_deleting_panorama_records_removes_stored_objects(): void
+    {
+        $node = PanoramaNode::query()->firstOrFail();
+        $oldPath = $node->panorama_url;
+        $this->actingAs($this->createUser(UserRole::SuperAdmin));
+
+        $this->callFilamentAction(
+            Livewire::test(ManagePanoramaNodes::class),
+            TestAction::make('edit')->table($node),
+            [
+                'heritage_area_id' => $node->heritage_area_id,
+                'name' => $node->name,
+                'panorama_url' => [
+                    UploadedFile::fake()->create('replacement.jpg', 256, 'image/jpeg'),
+                ],
+            ],
+        )->assertHasNoActionErrors();
+
+        $newPath = $node->refresh()->panorama_url;
+        $this->assertNotSame($oldPath, $newPath);
+        Storage::disk('s3')->assertMissing($oldPath);
+        Storage::disk('s3')->assertExists($newPath);
+
+        Livewire::test(ManagePanoramaNodes::class)
+            ->callAction(TestAction::make('delete')->table($node));
+
+        $this->assertDatabaseMissing('panorama_nodes', ['id' => $node->id]);
+        Storage::disk('s3')->assertMissing($newPath);
+    }
+
+    public function test_deleting_heritage_parent_removes_all_panorama_objects(): void
+    {
+        $site = HeritageSite::query()->firstOrFail();
+        $paths = PanoramaNode::query()->pluck('panorama_url');
+
+        $site->delete();
+
+        foreach ($paths as $path) {
+            Storage::disk('s3')->assertMissing($path);
+        }
     }
 
     private function createUser(UserRole $role): User

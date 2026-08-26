@@ -38,7 +38,7 @@ class BorobudurSeeder extends Seeder
                 ['heritage_area_id' => $area->id, 'slug' => $slug],
                 [
                     'name' => $name,
-                    'panorama_url' => "http://127.0.0.1:9000/vr-geonusa-dev/panoramas/borobudur/{$slug}.jpg",
+                    'panorama_url' => "panoramas/borobudur/{$slug}.jpg",
                 ],
             );
 

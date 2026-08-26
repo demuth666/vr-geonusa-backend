@@ -14,7 +14,7 @@ class PanoramaNodeResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'slug' => $this->slug,
-            'panorama_url' => $this->panorama_url,
+            'panorama_url' => $this->panoramaUrl(),
             'area' => [
                 'id' => $this->heritageArea->id,
                 'name' => $this->heritageArea->name,
@@ -34,7 +34,7 @@ class PanoramaNodeResource extends JsonResource
                     'id' => $link->targetNode->id,
                     'name' => $link->targetNode->name,
                     'slug' => $link->targetNode->slug,
-                    'panorama_url' => $link->targetNode->panorama_url,
+                    'panorama_url' => $link->targetNode->panoramaUrl(),
                 ],
             ])->values()->all(),
         ];

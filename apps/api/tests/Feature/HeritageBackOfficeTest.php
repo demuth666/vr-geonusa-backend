@@ -95,23 +95,47 @@ class HeritageBackOfficeTest extends TestCase
 
         $this->actingAs($this->createUser(UserRole::SuperAdmin));
 
-        Livewire::test(ManageHeritageSites::class)
-            ->callAction(TestAction::make('edit')->table($site), [
+        $this->callFilamentAction(
+            Livewire::test(ManageHeritageSites::class),
+            TestAction::make('edit')->table($site),
+            [
                 'name' => $site->name,
-                'slug' => $site->slug,
                 'description' => 'Deskripsi Borobudur dari Filament.',
                 'cover_image_url' => $site->cover_image_url,
-            ])
+            ],
+        )
             ->assertHasNoActionErrors();
 
-        Livewire::test(ManageHeritageAreas::class)
-            ->callAction('create', [
+        $this->callFilamentAction(
+            Livewire::test(ManageHeritageAreas::class),
+            'create',
+            [
                 'heritage_site_id' => $site->id,
                 'name' => 'Pelataran Selatan',
-                'slug' => 'pelataran-selatan',
                 'description' => 'Area baru dari Filament.',
-            ])
+            ],
+        )
             ->assertHasNoActionErrors();
+
+        $this->callFilamentAction(
+            Livewire::test(ManageHeritageAreas::class),
+            'create',
+            [
+                'heritage_site_id' => $site->id,
+                'name' => 'Pelataran Selatan',
+                'description' => 'Area duplikat dengan slug otomatis.',
+            ],
+        )
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('heritage_areas', [
+            'heritage_site_id' => $site->id,
+            'slug' => 'pelataran-selatan',
+        ]);
+        $this->assertDatabaseHas('heritage_areas', [
+            'heritage_site_id' => $site->id,
+            'slug' => 'pelataran-selatan-2',
+        ]);
 
         $this->getJson('/api/v1/heritage-sites/borobudur')
             ->assertOk()
@@ -122,6 +146,11 @@ class HeritageBackOfficeTest extends TestCase
                 'name' => 'Pelataran Selatan',
                 'slug' => 'pelataran-selatan',
                 'description' => 'Area baru dari Filament.',
+            ])
+            ->assertJsonFragment([
+                'name' => 'Pelataran Selatan',
+                'slug' => 'pelataran-selatan-2',
+                'description' => 'Area duplikat dengan slug otomatis.',
             ]);
     }
 

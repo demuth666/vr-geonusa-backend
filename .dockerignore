@@ -9,8 +9,9 @@
 **/.phpunit.result.cache
 apps/api/database/database.sqlite
 apps/api/storage/logs/*
+apps/api/storage/app/private/livewire-tmp
+apps/api/storage/framework/testing
 datasets
 artifacts
 *.pt
 *.onnx
-

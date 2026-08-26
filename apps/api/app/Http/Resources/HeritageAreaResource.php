@@ -19,7 +19,7 @@ class HeritageAreaResource extends JsonResource
                 'id' => $node->id,
                 'name' => $node->name,
                 'slug' => $node->slug,
-                'panorama_url' => $node->panorama_url,
+                'panorama_url' => $node->panoramaUrl(),
             ])->values()->all(),
         ];
     }

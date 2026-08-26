@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Resources\ResearchStudies;
+namespace App\Filament\Resources\Schools;
 
-use App\Domain\Research\Models\ResearchStudy;
-use App\Filament\Resources\ResearchStudies\Pages\ManageResearchStudies;
+use App\Domain\School\Models\School;
+use App\Filament\Resources\Schools\Pages\ManageSchools;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
@@ -13,17 +13,17 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
-class ResearchStudyResource extends Resource
+class SchoolResource extends Resource
 {
-    protected static ?string $model = ResearchStudy::class;
+    protected static ?string $model = School::class;
 
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedBeaker;
+    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingOffice2;
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Penelitian';
+    protected static string|\UnitEnum|null $navigationGroup = 'Manajemen Sekolah';
 
-    protected static ?string $modelLabel = 'Studi Penelitian';
+    protected static ?string $modelLabel = 'Sekolah';
 
-    protected static ?string $pluralModelLabel = 'Studi Penelitian';
+    protected static ?string $pluralModelLabel = 'Sekolah';
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -45,6 +45,12 @@ class ResearchStudyResource extends Resource
                     ->label('Nama')
                     ->searchable()
                     ->sortable(),
+                TextColumn::make('classrooms_count')
+                    ->counts('classrooms')
+                    ->label('Kelas'),
+                TextColumn::make('student_profiles_count')
+                    ->counts('studentProfiles')
+                    ->label('Siswa'),
                 TextColumn::make('updated_at')
                     ->label('Diperbarui')
                     ->dateTime()
@@ -59,7 +65,7 @@ class ResearchStudyResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => ManageResearchStudies::route('/'),
+            'index' => ManageSchools::route('/'),
         ];
     }
 }

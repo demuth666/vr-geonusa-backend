@@ -17,7 +17,7 @@ class ActivityEventResource extends JsonResource
                 'id' => $this->panoramaNode->id,
                 'name' => $this->panoramaNode->name,
                 'slug' => $this->panoramaNode->slug,
-                'panorama_url' => $this->panoramaNode->panorama_url,
+                'panorama_url' => $this->panoramaNode->panoramaUrl(),
             ],
             'visited_at' => $this->occurred_at->toISOString(),
         ];

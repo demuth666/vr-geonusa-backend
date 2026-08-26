@@ -1,14 +1,14 @@
 <?php
 
-namespace App\Filament\Resources\PanoramaNodes\Pages;
+namespace App\Filament\Resources\Students\Pages;
 
-use App\Filament\Resources\PanoramaNodes\PanoramaNodeResource;
+use App\Filament\Resources\Students\StudentResource;
 use Filament\Actions\CreateAction;
 use Filament\Resources\Pages\ManageRecords;
 
-class ManagePanoramaNodes extends ManageRecords
+class ManageStudents extends ManageRecords
 {
-    protected static string $resource = PanoramaNodeResource::class;
+    protected static string $resource = StudentResource::class;
 
     protected function getHeaderActions(): array
     {

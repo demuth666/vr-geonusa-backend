@@ -18,7 +18,7 @@ class LearningSessionResource extends JsonResource
                 'id' => $this->currentPanoramaNode->id,
                 'name' => $this->currentPanoramaNode->name,
                 'slug' => $this->currentPanoramaNode->slug,
-                'panorama_url' => $this->currentPanoramaNode->panorama_url,
+                'panorama_url' => $this->currentPanoramaNode->panoramaUrl(),
             ] : null,
             'created_at' => $this->created_at->toISOString(),
             'updated_at' => $this->updated_at->toISOString(),
