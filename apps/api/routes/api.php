@@ -3,6 +3,7 @@
 use App\Http\Controllers\AssessmentAttemptController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HeritageSiteController;
+use App\Http\Controllers\LearningMaterialController;
 use App\Http\Controllers\LearningSessionController;
 use App\Http\Controllers\PanoramaNodeController;
 use App\Http\Controllers\PanoramaVisitController;
@@ -17,6 +18,7 @@ Route::prefix('v1')->group(function () {
     Route::get('/heritage-sites/{slug}', [HeritageSiteController::class, 'show']);
     Route::get('/heritage-sites/{slug}/areas', [HeritageSiteController::class, 'areas']);
     Route::get('/panorama-nodes/{id}', [PanoramaNodeController::class, 'show']);
+    Route::get('/heritage-objects/{id}/learning-material', [LearningMaterialController::class, 'show']);
 
     Route::post('/auth/login', [AuthController::class, 'login']);
 
@@ -27,6 +29,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/learning-sessions', [LearningSessionController::class, 'store']);
         Route::get('/learning-sessions/{id}', [LearningSessionController::class, 'show']);
         Route::post('/learning-sessions/{id}/panorama-visits', [PanoramaVisitController::class, 'store']);
+        Route::post('/learning-sessions/{id}/materials/{objectId}/viewed', [LearningMaterialController::class, 'viewed']);
         Route::post('/learning-sessions/{id}/assessment-attempts', [AssessmentAttemptController::class, 'store']);
         Route::get('/assessment-attempts/{id}', [AssessmentAttemptController::class, 'show']);
         Route::put('/assessment-attempts/{attemptId}/answers/{itemId}', [AssessmentAttemptController::class, 'answer']);

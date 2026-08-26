@@ -2,16 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Domain\Identity\Models\StudentProfile;
-use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Enums\LearningSessionPhase;
 use App\Domain\Learning\Models\LearningSession;
 use App\Domain\Research\Models\AssessmentAnswer;
 use App\Domain\Research\Models\AssessmentAttempt;
 use App\Domain\Research\Models\AssessmentItem;
-use App\Domain\Research\Models\ResearchParticipant;
-use App\Domain\Research\Models\ResearchStudy;
-use App\Domain\School\Models\School;
 use Database\Seeders\AssessmentSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -20,6 +15,13 @@ use Tests\TestCase;
 class AssessmentTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(AssessmentSeeder::class);
+    }
 
     public function test_assessment_endpoints_require_authentication(): void
     {
@@ -31,7 +33,7 @@ class AssessmentTest extends TestCase
 
     public function test_student_starts_and_reads_owned_pretest_without_answer_leaks(): void
     {
-        [$user, $session, $writeToken] = $this->createSession('a');
+        [$user, $session, $writeToken] = $this->createLearningSession('assessment', 'a');
         Sanctum::actingAs($user);
 
         $this->postJson(
@@ -56,7 +58,7 @@ class AssessmentTest extends TestCase
             ->assertOk()
             ->assertJsonPath('data.id', $attemptId);
 
-        [$otherUser] = $this->createSession('b');
+        [$otherUser] = $this->createLearningSession('assessment', 'b');
         Sanctum::actingAs($otherUser);
 
         $this->getJson("/api/v1/assessment-attempts/{$attemptId}")->assertNotFound();
@@ -69,7 +71,7 @@ class AssessmentTest extends TestCase
 
     public function test_pretest_is_scored_by_server_then_locked_and_advances_session(): void
     {
-        [$user, $session, $writeToken] = $this->createSession('a');
+        [$user, $session, $writeToken] = $this->createLearningSession('assessment', 'a');
         Sanctum::actingAs($user);
 
         $attemptId = $this->startAttempt($session, $writeToken)->json('data.id');
@@ -132,7 +134,7 @@ class AssessmentTest extends TestCase
 
     public function test_attempt_rejects_invalid_options_missing_answers_and_wrong_phase(): void
     {
-        [$user, $session, $writeToken] = $this->createSession('a');
+        [$user, $session, $writeToken] = $this->createLearningSession('assessment', 'a');
         Sanctum::actingAs($user);
 
         $attemptId = $this->startAttempt($session, $writeToken)->json('data.id');
@@ -170,7 +172,7 @@ class AssessmentTest extends TestCase
         $this->assertSame(LearningSessionPhase::Pretest, $session->fresh()->phase);
         $this->assertSame('draft', AssessmentAttempt::query()->findOrFail($attemptId)->status);
 
-        [$otherUser, $otherSession, $otherToken] = $this->createSession('b');
+        [$otherUser, $otherSession, $otherToken] = $this->createLearningSession('assessment', 'b');
         $otherSession->transitionTo(LearningSessionPhase::Exploration);
         Sanctum::actingAs($otherUser);
 
@@ -185,35 +187,6 @@ class AssessmentTest extends TestCase
         $this->assertDatabaseCount('assessment_instruments', 1);
         $this->assertDatabaseCount('assessment_items', 2);
         $this->assertDatabaseCount('assessment_options', 6);
-    }
-
-    /** @return array{User, LearningSession, string} */
-    private function createSession(string $suffix): array
-    {
-        $this->seed(AssessmentSeeder::class);
-
-        $school = School::firstOrCreate(['name' => 'SMP GeoNusa']);
-        $user = User::create([
-            'email' => "assessment-{$suffix}@example.test",
-            'password' => 'password',
-        ]);
-        $profile = StudentProfile::create([
-            'user_id' => $user->id,
-            'school_id' => $school->id,
-            'name' => "Assessment Student {$suffix}",
-            'student_number' => "ASSESS-{$suffix}",
-        ]);
-        $participant = ResearchParticipant::create([
-            'research_study_id' => ResearchStudy::query()->sole()->id,
-            'student_profile_id' => $profile->id,
-        ]);
-        $writeToken = str_repeat($suffix, 64);
-        $session = LearningSession::create([
-            'research_participant_id' => $participant->id,
-            'write_token_hash' => hash('sha256', $writeToken),
-        ]);
-
-        return [$user, $session, $writeToken];
     }
 
     private function startAttempt(LearningSession $session, string $writeToken)

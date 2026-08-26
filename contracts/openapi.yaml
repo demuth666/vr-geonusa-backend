@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.6.0
+  version: 0.7.0
 paths:
   /api/v1/health:
     get:
@@ -230,6 +230,59 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           description: Invalid panorama node or client-supplied visit state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/materials/{objectId}/viewed:
+    post:
+      operationId: recordLearningMaterialView
+      summary: Record a heritage-object learning material view during exploration
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+        - $ref: "#/components/parameters/HeritageObjectPathId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordMaterialViewRequest"
+      responses:
+        "201":
+          description: Learning material view recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MaterialViewEventResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session is not owned or heritage object does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Learning session is not in the exploration phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Client supplied server-owned material-view state
           content:
             application/json:
               schema:
@@ -490,6 +543,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/heritage-objects/{id}/learning-material:
+    get:
+      operationId: getHeritageObjectLearningMaterial
+      summary: Get geometry mappings and learning material for a heritage object
+      parameters:
+        - $ref: "#/components/parameters/HeritageObjectId"
+      responses:
+        "200":
+          description: Heritage-object learning material
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningMaterialResponse"
+        "404":
+          description: Heritage object not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   parameters:
     HeritageSiteSlug:
@@ -500,6 +572,18 @@ components:
         type: string
     LearningSessionId:
       name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    HeritageObjectId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    HeritageObjectPathId:
+      name: objectId
       in: path
       required: true
       schema:
@@ -543,6 +627,10 @@ components:
       properties:
         panorama_node_id:
           type: integer
+    RecordMaterialViewRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
     ActivityEventResponse:
       type: object
       required: [data]
@@ -561,6 +649,26 @@ components:
         panorama_node:
           $ref: "#/components/schemas/PanoramaNodeSummary"
         visited_at:
+          type: string
+          format: date-time
+    MaterialViewEventResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/MaterialViewedEvent"
+    MaterialViewedEvent:
+      type: object
+      required: [id, type, heritage_object, viewed_at]
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          const: material_viewed
+        heritage_object:
+          $ref: "#/components/schemas/HeritageObjectSummary"
+        viewed_at:
           type: string
           format: date-time
     StartAssessmentAttemptRequest:
@@ -775,7 +883,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/PanoramaNodeSummary"
         - type: object
-          required: [area, links]
+          required: [area, links, annotations]
           properties:
             area:
               $ref: "#/components/schemas/HeritageAreaReference"
@@ -783,6 +891,10 @@ components:
               type: array
               items:
                 $ref: "#/components/schemas/PanoramaLink"
+            annotations:
+              type: array
+              items:
+                $ref: "#/components/schemas/PanoramaObjectAnnotation"
     HeritageAreaReference:
       type: object
       required: [id, name, slug, heritage_site]
@@ -819,6 +931,84 @@ components:
           type: number
         target:
           $ref: "#/components/schemas/PanoramaNodeSummary"
+    PanoramaObjectAnnotation:
+      type: object
+      required: [id, heritage_object]
+      properties:
+        id:
+          type: integer
+        heritage_object:
+          $ref: "#/components/schemas/HeritageObjectSummary"
+    HeritageObjectSummary:
+      type: object
+      required: [id, name, slug]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+    LearningMaterialResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: object
+          required: [heritage_object, geometry_mappings]
+          properties:
+            heritage_object:
+              $ref: "#/components/schemas/HeritageObject"
+            geometry_mappings:
+              type: array
+              items:
+                $ref: "#/components/schemas/HeritageGeometryMapping"
+    HeritageObject:
+      allOf:
+        - $ref: "#/components/schemas/HeritageObjectSummary"
+        - type: object
+          required: [description]
+          properties:
+            description:
+              type: [string, "null"]
+    HeritageGeometryMapping:
+      type: object
+      required: [semantics, geometry_shape, learning_objectives]
+      properties:
+        semantics:
+          type: string
+          example: didekati sebagai
+        geometry_shape:
+          $ref: "#/components/schemas/GeometryShape"
+        learning_objectives:
+          type: array
+          items:
+            $ref: "#/components/schemas/LearningObjective"
+    GeometryShape:
+      type: object
+      required: [id, name, slug, description]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: [string, "null"]
+    LearningObjective:
+      type: object
+      required: [id, title, content, position]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        position:
+          type: integer
+          minimum: 1
     LoginRequest:
       type: object
       additionalProperties: false

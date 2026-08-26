@@ -85,5 +85,10 @@ class HeritageContentTest extends TestCase
         $this->assertDatabaseCount('heritage_areas', 1);
         $this->assertDatabaseCount('panorama_nodes', 3);
         $this->assertDatabaseCount('panorama_links', 4);
+        $this->assertDatabaseCount('heritage_objects', 1);
+        $this->assertDatabaseCount('panorama_object_annotations', 1);
+        $this->assertDatabaseCount('geometry_shapes', 1);
+        $this->assertDatabaseCount('heritage_geometry_mappings', 1);
+        $this->assertDatabaseCount('learning_objectives', 1);
     }
 }

@@ -2,10 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Geometry\Models\GeometryShape;
+use App\Domain\Geometry\Models\HeritageGeometryMapping;
+use App\Domain\Geometry\Models\LearningObjective;
 use App\Domain\Heritage\Models\HeritageArea;
+use App\Domain\Heritage\Models\HeritageObject;
 use App\Domain\Heritage\Models\HeritageSite;
 use App\Domain\Heritage\Models\PanoramaLink;
 use App\Domain\Heritage\Models\PanoramaNode;
+use App\Domain\Heritage\Models\PanoramaObjectAnnotation;
 use Illuminate\Database\Seeder;
 
 class BorobudurSeeder extends Seeder
@@ -59,5 +64,42 @@ class BorobudurSeeder extends Seeder
                 compact('yaw', 'pitch', 'label'),
             );
         }
+
+        $stupa = HeritageObject::updateOrCreate(
+            ['heritage_site_id' => $site->id, 'slug' => 'stupa'],
+            [
+                'name' => 'Stupa',
+                'description' => 'Elemen arsitektur Buddhis pada Candi Borobudur.',
+            ],
+        );
+
+        PanoramaObjectAnnotation::updateOrCreate([
+            'panorama_node_id' => $nodes['stupa-induk']->id,
+            'heritage_object_id' => $stupa->id,
+        ]);
+
+        $halfSphere = GeometryShape::updateOrCreate(
+            ['slug' => 'setengah-bola'],
+            [
+                'name' => 'Setengah Bola',
+                'description' => 'Bagian dari bola yang dibatasi oleh sebuah lingkaran besar.',
+            ],
+        );
+
+        $mapping = HeritageGeometryMapping::updateOrCreate(
+            [
+                'heritage_object_id' => $stupa->id,
+                'geometry_shape_id' => $halfSphere->id,
+            ],
+            ['semantics' => 'didekati sebagai'],
+        );
+
+        LearningObjective::updateOrCreate(
+            ['heritage_geometry_mapping_id' => $mapping->id, 'position' => 1],
+            [
+                'title' => 'Mengenali unsur setengah bola',
+                'material_content' => 'Stupa dapat didekati sebagai setengah bola untuk mempelajari permukaan lengkung dan alas lingkarannya.',
+            ],
+        );
     }
 }
