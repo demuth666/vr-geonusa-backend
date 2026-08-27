@@ -5,6 +5,7 @@ namespace App\Domain\Heritage\Models;
 use App\Domain\Geometry\Models\HeritageGeometryMapping;
 use App\Domain\Heritage\Models\Concerns\HasUniqueSlug;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class HeritageObject extends Model
@@ -17,6 +18,11 @@ class HeritageObject extends Model
         'slug',
         'description',
     ];
+
+    public function heritageSite(): BelongsTo
+    {
+        return $this->belongsTo(HeritageSite::class);
+    }
 
     public function geometryMappings(): HasMany
     {
