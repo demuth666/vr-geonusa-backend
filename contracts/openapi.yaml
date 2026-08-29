@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.7.0
+  version: 0.8.0
 paths:
   /api/v1/health:
     get:
@@ -562,6 +562,25 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/quizzes/{id}:
+    get:
+      operationId: getMicroQuiz
+      summary: Get a Micro Quiz and its ordered questions
+      parameters:
+        - $ref: "#/components/parameters/QuizId"
+      responses:
+        "200":
+          description: Micro Quiz without answer keys or formative feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MicroQuizResponse"
+        "404":
+          description: Micro Quiz not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   parameters:
     HeritageSiteSlug:
@@ -584,6 +603,12 @@ components:
         type: integer
     HeritageObjectPathId:
       name: objectId
+      in: path
+      required: true
+      schema:
+        type: integer
+    QuizId:
+      name: id
       in: path
       required: true
       schema:
@@ -1005,6 +1030,74 @@ components:
         title:
           type: string
         content:
+          type: string
+        position:
+          type: integer
+          minimum: 1
+    MicroQuizResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/MicroQuiz"
+    MicroQuiz:
+      type: object
+      required: [id, title, heritage_geometry_mapping, questions]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        heritage_geometry_mapping:
+          $ref: "#/components/schemas/MicroQuizMapping"
+        questions:
+          type: array
+          items:
+            $ref: "#/components/schemas/MicroQuizQuestion"
+    MicroQuizMapping:
+      type: object
+      required: [id, semantics, heritage_object, geometry_shape]
+      properties:
+        id:
+          type: integer
+        semantics:
+          type: string
+          example: didekati sebagai
+        heritage_object:
+          $ref: "#/components/schemas/HeritageObjectSummary"
+        geometry_shape:
+          type: object
+          required: [id, name, slug]
+          properties:
+            id:
+              type: integer
+            name:
+              type: string
+            slug:
+              type: string
+    MicroQuizQuestion:
+      type: object
+      required: [id, prompt, position, options]
+      properties:
+        id:
+          type: integer
+        prompt:
+          type: string
+        position:
+          type: integer
+          minimum: 1
+        options:
+          type: array
+          items:
+            $ref: "#/components/schemas/MicroQuizOption"
+    MicroQuizOption:
+      type: object
+      additionalProperties: false
+      required: [id, text, position]
+      properties:
+        id:
+          type: integer
+        text:
           type: string
         position:
           type: integer

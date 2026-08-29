@@ -90,5 +90,8 @@ class HeritageContentTest extends TestCase
         $this->assertDatabaseCount('geometry_shapes', 1);
         $this->assertDatabaseCount('heritage_geometry_mappings', 1);
         $this->assertDatabaseCount('learning_objectives', 1);
+        $this->assertDatabaseCount('quizzes', 1);
+        $this->assertDatabaseCount('questions', 1);
+        $this->assertDatabaseCount('question_options', 3);
     }
 }
