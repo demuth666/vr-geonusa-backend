@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.8.0
+  version: 0.9.0
 paths:
   /api/v1/health:
     get:
@@ -283,6 +283,111 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "422":
           description: Client supplied server-owned material-view state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/quiz-attempts:
+    post:
+      operationId: startMicroQuizAttempt
+      summary: Start a Micro Quiz attempt during exploration
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartQuizAttemptRequest"
+      responses:
+        "201":
+          description: Micro Quiz attempt created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizAttemptResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Learning session is not in the exploration phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid quiz or client-supplied scoring or feedback fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/quiz-attempts/{attemptId}/answers/{questionId}:
+    put:
+      operationId: answerMicroQuizQuestion
+      summary: Immutably answer one Micro Quiz question with formative feedback
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuizAttemptPathId"
+        - $ref: "#/components/parameters/QuizQuestionPathId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SaveQuizAnswerRequest"
+      responses:
+        "200":
+          description: Answer recorded with server-calculated correctness and formative feedback
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizAnswerResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Micro Quiz attempt not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Question was already answered or session is not in exploration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Invalid question, selected option, or client-supplied scoring or feedback fields
           content:
             application/json:
               schema:
@@ -613,6 +718,18 @@ components:
       required: true
       schema:
         type: integer
+    QuizAttemptPathId:
+      name: attemptId
+      in: path
+      required: true
+      schema:
+        type: integer
+    QuizQuestionPathId:
+      name: questionId
+      in: path
+      required: true
+      schema:
+        type: integer
     AssessmentAttemptId:
       name: id
       in: path
@@ -656,6 +773,62 @@ components:
       type: object
       additionalProperties: false
       properties: {}
+    StartQuizAttemptRequest:
+      type: object
+      additionalProperties: false
+      required: [quiz_id]
+      properties:
+        quiz_id:
+          type: integer
+    SaveQuizAnswerRequest:
+      type: object
+      additionalProperties: false
+      required: [selected_option_id]
+      properties:
+        selected_option_id:
+          type: integer
+    QuizAttemptResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/QuizAttempt"
+    QuizAttempt:
+      type: object
+      additionalProperties: false
+      required: [id, quiz_id, created_at]
+      properties:
+        id:
+          type: integer
+        quiz_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+    QuizAnswerResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/QuizAnswer"
+    QuizAnswer:
+      type: object
+      additionalProperties: false
+      required: [id, question_id, selected_option_id, is_correct, feedback, answered_at]
+      properties:
+        id:
+          type: integer
+        question_id:
+          type: integer
+        selected_option_id:
+          type: integer
+        is_correct:
+          type: boolean
+        feedback:
+          type: string
+        answered_at:
+          type: string
+          format: date-time
     ActivityEventResponse:
       type: object
       required: [data]
