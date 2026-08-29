@@ -48,6 +48,11 @@ class PanoramaNode extends Model
         return $this->hasMany(PanoramaLink::class, 'target_node_id')->orderBy('id');
     }
 
+    public function annotations(): HasMany
+    {
+        return $this->hasMany(PanoramaObjectAnnotation::class)->orderBy('id');
+    }
+
     public function panoramaUrl(): string
     {
         return filter_var($this->panorama_url, FILTER_VALIDATE_URL)

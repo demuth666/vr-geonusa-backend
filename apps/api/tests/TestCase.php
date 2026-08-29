@@ -3,7 +3,13 @@
 namespace Tests;
 
 use App\Domain\Identity\Enums\UserRole;
+use App\Domain\Identity\Models\StudentProfile;
 use App\Domain\Identity\Models\User;
+use App\Domain\Learning\Enums\LearningSessionPhase;
+use App\Domain\Learning\Models\LearningSession;
+use App\Domain\Research\Models\ResearchParticipant;
+use App\Domain\Research\Models\ResearchStudy;
+use App\Domain\School\Models\School;
 use Closure;
 use Filament\Actions\Testing\TestAction;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
@@ -27,5 +33,40 @@ abstract class TestCase extends BaseTestCase
             'password' => 'password',
             'role' => $role,
         ]);
+    }
+
+    /** @return array{User, LearningSession, string} */
+    protected function createLearningSession(
+        string $prefix,
+        string $suffix,
+        bool $exploration = false,
+    ): array {
+        $school = School::firstOrCreate(['name' => 'SMP GeoNusa']);
+        $user = User::create([
+            'email' => "{$prefix}-{$suffix}@example.test",
+            'password' => 'password',
+        ]);
+        $profile = StudentProfile::create([
+            'user_id' => $user->id,
+            'school_id' => $school->id,
+            'name' => ucfirst($prefix)." Student {$suffix}",
+            'student_number' => strtoupper($prefix)."-{$suffix}",
+        ]);
+        $study = ResearchStudy::firstOrCreate(['name' => 'VR GeoNusa Borobudur Study']);
+        $participant = ResearchParticipant::create([
+            'research_study_id' => $study->id,
+            'student_profile_id' => $profile->id,
+        ]);
+        $writeToken = str_pad($suffix, 64, 'x');
+        $session = LearningSession::create([
+            'research_participant_id' => $participant->id,
+            'write_token_hash' => hash('sha256', $writeToken),
+        ]);
+
+        if ($exploration) {
+            $session->transitionTo(LearningSessionPhase::Exploration);
+        }
+
+        return [$user, $session, $writeToken];
     }
 }

@@ -3,14 +3,9 @@
 namespace Tests\Feature;
 
 use App\Domain\Heritage\Models\PanoramaNode;
-use App\Domain\Identity\Models\StudentProfile;
-use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Enums\LearningSessionPhase;
 use App\Domain\Learning\Models\ActivityEvent;
 use App\Domain\Learning\Models\LearningSession;
-use App\Domain\Research\Models\ResearchParticipant;
-use App\Domain\Research\Models\ResearchStudy;
-use App\Domain\School\Models\School;
 use Database\Seeders\BorobudurSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -35,7 +30,7 @@ class PanoramaVisitTest extends TestCase
 
     public function test_only_exploration_sessions_can_record_valid_visits(): void
     {
-        [$user, $session, $writeToken] = $this->createSession('a');
+        [$user, $session, $writeToken] = $this->createLearningSession('panorama', 'a');
         $node = PanoramaNode::query()->firstOrFail();
         Sanctum::actingAs($user);
 
@@ -72,8 +67,8 @@ class PanoramaVisitTest extends TestCase
 
     public function test_visit_requires_session_ownership_and_write_token(): void
     {
-        [$studentA, $sessionA, $writeTokenA] = $this->createSession('a', exploration: true);
-        [$studentB] = $this->createSession('b', exploration: true);
+        [$studentA, $sessionA, $writeTokenA] = $this->createLearningSession('panorama', 'a', exploration: true);
+        [$studentB] = $this->createLearningSession('panorama', 'b', exploration: true);
         $node = PanoramaNode::query()->firstOrFail();
 
         Sanctum::actingAs($studentB);
@@ -89,7 +84,7 @@ class PanoramaVisitTest extends TestCase
 
     public function test_visits_create_events_update_current_node_and_resume_latest_node(): void
     {
-        [$user, $session, $writeToken] = $this->createSession('a', exploration: true);
+        [$user, $session, $writeToken] = $this->createLearningSession('panorama', 'a', exploration: true);
         $east = PanoramaNode::query()->where('slug', 'pelataran-timur')->firstOrFail();
         $stupa = PanoramaNode::query()->where('slug', 'stupa-induk')->firstOrFail();
         Sanctum::actingAs($user);
@@ -120,40 +115,6 @@ class PanoramaVisitTest extends TestCase
         $this->getJson('/api/v1/me/learning-sessions/active')
             ->assertOk()
             ->assertJsonPath('data.current_panorama_node.id', $stupa->id);
-    }
-
-    /** @return array{User, LearningSession, string} */
-    private function createSession(string $suffix, bool $exploration = false): array
-    {
-        $school = School::firstOrCreate(['name' => 'SMP GeoNusa']);
-        $user = User::create([
-            'email' => "panorama-{$suffix}@example.test",
-            'password' => 'password',
-        ]);
-        $profile = StudentProfile::create([
-            'user_id' => $user->id,
-            'school_id' => $school->id,
-            'name' => "Panorama Student {$suffix}",
-            'student_number' => "PANORAMA-{$suffix}",
-        ]);
-        $study = ResearchStudy::firstOrCreate([
-            'name' => 'VR GeoNusa Borobudur Study',
-        ]);
-        $participant = ResearchParticipant::create([
-            'research_study_id' => $study->id,
-            'student_profile_id' => $profile->id,
-        ]);
-        $writeToken = str_repeat($suffix, 64);
-        $session = LearningSession::create([
-            'research_participant_id' => $participant->id,
-            'write_token_hash' => hash('sha256', $writeToken),
-        ]);
-
-        if ($exploration) {
-            $session->transitionTo(LearningSessionPhase::Exploration);
-        }
-
-        return [$user, $session, $writeToken];
     }
 
     private function recordVisit(

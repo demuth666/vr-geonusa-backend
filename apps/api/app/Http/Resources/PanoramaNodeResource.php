@@ -37,6 +37,14 @@ class PanoramaNodeResource extends JsonResource
                     'panorama_url' => $link->targetNode->panoramaUrl(),
                 ],
             ])->values()->all(),
+            'annotations' => $this->annotations->map(fn ($annotation) => [
+                'id' => $annotation->id,
+                'heritage_object' => [
+                    'id' => $annotation->heritageObject->id,
+                    'name' => $annotation->heritageObject->name,
+                    'slug' => $annotation->heritageObject->slug,
+                ],
+            ])->values()->all(),
         ];
     }
 }

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use LogicException;
 
 class HeritageSite extends Model
 {
@@ -27,7 +28,15 @@ class HeritageSite extends Model
             }
         });
 
-        static::deleting(fn (HeritageSite $site) => $site->areas()->get()->each->delete());
+        static::deleting(function (HeritageSite $site): void {
+            if ($site->heritageObjects()->exists()) {
+                throw new LogicException(
+                    'Situs warisan masih memiliki objek dan tidak dapat dihapus.',
+                );
+            }
+
+            $site->areas()->get()->each->delete();
+        });
 
         static::deleted(fn (HeritageSite $site) => $site->deleteCoverAfterCommit(
             $site->getRawOriginal('cover_image_url'),
@@ -37,6 +46,11 @@ class HeritageSite extends Model
     public function areas(): HasMany
     {
         return $this->hasMany(HeritageArea::class)->orderBy('id');
+    }
+
+    public function heritageObjects(): HasMany
+    {
+        return $this->hasMany(HeritageObject::class)->orderBy('id');
     }
 
     public function coverImageUrl(): string
