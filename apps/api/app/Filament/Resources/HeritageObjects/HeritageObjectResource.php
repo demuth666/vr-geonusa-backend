@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\HeritageObjects;
 
+use App\Domain\Heritage\Actions\DeleteHeritageObject;
+use App\Domain\Heritage\Exceptions\HeritageObjectInUse;
 use App\Domain\Heritage\Models\HeritageObject;
 use App\Filament\Resources\HeritageObjects\Pages\ManageHeritageObjects;
 use Filament\Actions\DeleteAction;
@@ -36,6 +38,7 @@ class HeritageObjectResource extends Resource
                 ->label('Situs Warisan')
                 ->relationship('heritageSite', 'name')
                 ->required()
+                ->disabledOn('edit')
                 ->searchable()
                 ->preload(),
             TextInput::make('name')
@@ -72,7 +75,18 @@ class HeritageObjectResource extends Resource
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make()->databaseTransaction(),
+                DeleteAction::make()
+                    ->action(function (DeleteAction $action, HeritageObject $record): void {
+                        try {
+                            app(DeleteHeritageObject::class)->execute($record);
+                            $action->success();
+                        } catch (HeritageObjectInUse) {
+                            $action->failure();
+                        }
+                    })
+                    ->failureNotificationTitle(
+                        'Objek warisan masih digunakan dan tidak dapat dihapus.',
+                    ),
             ]);
     }
 

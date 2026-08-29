@@ -5,8 +5,12 @@ VR-GeoNusa models a research-oriented learning journey in which students study g
 ## Heritage and geometry
 
 **Heritage Object**:
-A culturally meaningful physical feature associated with a heritage site. It remains distinct from any mathematical shape used to explain it.
+A culturally meaningful physical feature permanently associated with one heritage site after creation. It remains distinct from any mathematical shape used to explain it.
 _Avoid_: Geometry object, geometry class
+
+**Unused Heritage Object**:
+A Heritage Object with no current or historical domain references. Only an Unused Heritage Object may be permanently deleted.
+_Avoid_: Inactive object, unpublished object
 
 **Geometry Shape**:
 A mathematical form used in learning content, such as a hemisphere.

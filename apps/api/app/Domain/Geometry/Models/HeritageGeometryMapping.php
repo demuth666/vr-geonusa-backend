@@ -2,6 +2,7 @@
 
 namespace App\Domain\Geometry\Models;
 
+use App\Domain\Heritage\Models\HeritageObject;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,6 +14,11 @@ class HeritageGeometryMapping extends Model
         'geometry_shape_id',
         'semantics',
     ];
+
+    public function heritageObject(): BelongsTo
+    {
+        return $this->belongsTo(HeritageObject::class);
+    }
 
     public function geometryShape(): BelongsTo
     {

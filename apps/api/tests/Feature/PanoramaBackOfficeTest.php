@@ -19,6 +19,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
+use LogicException;
 use Tests\TestCase;
 
 class PanoramaBackOfficeTest extends TestCase
@@ -257,16 +258,26 @@ class PanoramaBackOfficeTest extends TestCase
         Storage::disk('s3')->assertMissing($newPath);
     }
 
-    public function test_deleting_heritage_parent_removes_all_panorama_objects(): void
+    public function test_referenced_heritage_site_cannot_be_deleted(): void
     {
         $site = HeritageSite::query()->firstOrFail();
         $paths = PanoramaNode::query()->pluck('panorama_url');
 
-        $site->delete();
+        try {
+            $site->delete();
+            $this->fail('Expected deletion of a referenced Heritage Site to be rejected.');
+        } catch (LogicException $exception) {
+            $this->assertSame(
+                'Situs warisan masih memiliki objek dan tidak dapat dihapus.',
+                $exception->getMessage(),
+            );
+        }
+
+        $this->assertDatabaseHas('heritage_sites', ['id' => $site->id]);
+        $this->assertDatabaseCount('panorama_nodes', 3);
 
         foreach ($paths as $path) {
-            Storage::disk('s3')->assertMissing($path);
+            Storage::disk('s3')->assertExists($path);
         }
     }
-
 }
