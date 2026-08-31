@@ -39,6 +39,10 @@ For every non-trivial task:
 
 Do not silently expand scope.
 
+Create a dedicated task branch before committing any changes.
+
+Use `podman` and `podman compose` for all container operations.
+
 ---
 
 ## Architecture Rules
