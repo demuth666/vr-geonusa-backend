@@ -5,7 +5,6 @@ namespace App\Domain\Learning\Actions;
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Enums\LearningSessionPhase;
 use App\Domain\Learning\Models\LearningSession;
-use App\Domain\Learning\Models\Question;
 use App\Domain\Learning\Models\QuestionOption;
 use App\Domain\Learning\Models\Quiz;
 use App\Domain\Learning\Models\QuizAnswer;
@@ -28,10 +27,14 @@ class ManageQuizAttempt
             $this->assertWritableSession($session, $writeToken);
             $quiz = Quiz::query()->findOrFail($quizId);
 
-            return QuizAttempt::create([
+            $attempt = QuizAttempt::create([
                 'learning_session_id' => $session->id,
                 'quiz_id' => $quiz->id,
             ]);
+
+            $attempt->questions()->attach($quiz->questions()->pluck('questions.id'));
+
+            return $attempt;
         });
     }
 
@@ -54,10 +57,9 @@ class ManageQuizAttempt
                 ->findOrFail($attempt->learning_session_id);
 
             $this->assertWritableSession($session, $writeToken);
+            $this->assertDraft($attempt);
 
-            $question = Question::query()
-                ->where('quiz_id', $attempt->quiz_id)
-                ->find($questionId);
+            $question = $attempt->questions()->find($questionId);
 
             if (! $question) {
                 throw ValidationException::withMessages([
@@ -90,6 +92,41 @@ class ManageQuizAttempt
         });
     }
 
+    public function submit(User $user, int $attemptId, ?string $writeToken): QuizAttempt
+    {
+        return DB::transaction(function () use ($user, $attemptId, $writeToken) {
+            $attempt = QuizAttempt::query()
+                ->ownedBy($user)
+                ->lockForUpdate()
+                ->findOrFail($attemptId);
+
+            $session = LearningSession::query()
+                ->ownedBy($user)
+                ->lockForUpdate()
+                ->findOrFail($attempt->learning_session_id);
+
+            $this->assertWritableSession($session, $writeToken);
+            $this->assertDraft($attempt);
+
+            $questionCount = $attempt->questions()->count();
+            $answers = $attempt->answers()->get();
+
+            if ($questionCount === 0 || $answers->count() !== $questionCount) {
+                throw new ConflictHttpException('Every Micro Quiz question must be answered before submission.');
+            }
+
+            $correctCount = $answers->where('is_correct', true)->count();
+
+            $attempt->forceFill([
+                'status' => 'submitted',
+                'score' => (int) round(($correctCount / $questionCount) * 100),
+                'submitted_at' => now(),
+            ])->save();
+
+            return $attempt;
+        });
+    }
+
     private function assertWritableSession(LearningSession $session, ?string $writeToken): void
     {
         if (! $session->hasValidWriteToken($writeToken)) {
@@ -98,6 +135,13 @@ class ManageQuizAttempt
 
         if ($session->phase !== LearningSessionPhase::Exploration) {
             throw new ConflictHttpException('Micro Quizzes are only available during exploration.');
+        }
+    }
+
+    private function assertDraft(QuizAttempt $attempt): void
+    {
+        if ($attempt->status !== 'draft') {
+            throw new ConflictHttpException('The Micro Quiz attempt has already been submitted.');
         }
     }
 }

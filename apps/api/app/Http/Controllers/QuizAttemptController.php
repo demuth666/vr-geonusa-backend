@@ -6,6 +6,7 @@ use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Actions\ManageQuizAttempt;
 use App\Http\Requests\SaveQuizAnswerRequest;
 use App\Http\Requests\StartQuizAttemptRequest;
+use App\Http\Requests\SubmitQuizAttemptRequest;
 use App\Http\Resources\QuizAnswerResource;
 use App\Http\Resources\QuizAttemptResource;
 use Illuminate\Http\JsonResponse;
@@ -50,6 +51,23 @@ class QuizAttemptController extends Controller
 
         return response()->json([
             'data' => QuizAnswerResource::make($answer)->resolve($request),
+        ]);
+    }
+
+    public function submit(
+        SubmitQuizAttemptRequest $request,
+        ManageQuizAttempt $quizAttempts,
+        int $attemptId,
+    ): JsonResponse {
+        /** @var User $user */
+        $user = $request->user();
+
+        return response()->json([
+            'data' => QuizAttemptResource::make($quizAttempts->submit(
+                $user,
+                $attemptId,
+                $request->header('X-Session-Write-Token'),
+            ))->resolve($request),
         ]);
     }
 }

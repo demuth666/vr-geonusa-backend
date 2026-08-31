@@ -35,6 +35,7 @@ Route::prefix('v1')->group(function () {
         Route::post('/learning-sessions/{id}/materials/{objectId}/viewed', [LearningMaterialController::class, 'viewed']);
         Route::post('/learning-sessions/{id}/quiz-attempts', [QuizAttemptController::class, 'store']);
         Route::put('/quiz-attempts/{attemptId}/answers/{questionId}', [QuizAttemptController::class, 'answer']);
+        Route::post('/quiz-attempts/{attemptId}/submit', [QuizAttemptController::class, 'submit']);
         Route::post('/learning-sessions/{id}/assessment-attempts', [AssessmentAttemptController::class, 'store']);
         Route::get('/assessment-attempts/{id}', [AssessmentAttemptController::class, 'show']);
         Route::put('/assessment-attempts/{attemptId}/answers/{itemId}', [AssessmentAttemptController::class, 'answer']);

@@ -392,6 +392,58 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/quiz-attempts/{attemptId}/submit:
+    post:
+      operationId: submitMicroQuizAttempt
+      summary: Score, complete, and lock a fully answered Micro Quiz attempt
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/QuizAttemptPathId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitQuizAttemptRequest"
+      responses:
+        "200":
+          description: Micro Quiz attempt submitted with its formative score
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuizAttemptResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Micro Quiz attempt not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Attempt is incomplete, submitted, or outside the exploration phase
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "422":
+          description: Client supplied score or submission state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/learning-sessions/{id}/assessment-attempts:
     post:
       operationId: startAssessmentAttempt
@@ -787,6 +839,10 @@ components:
       properties:
         selected_option_id:
           type: integer
+    SubmitQuizAttemptRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
     QuizAttemptResponse:
       type: object
       required: [data]
@@ -796,12 +852,22 @@ components:
     QuizAttempt:
       type: object
       additionalProperties: false
-      required: [id, quiz_id, created_at]
+      required: [id, quiz_id, status, score, submitted_at, created_at]
       properties:
         id:
           type: integer
         quiz_id:
           type: integer
+        status:
+          type: string
+          enum: [draft, submitted]
+        score:
+          type: [integer, "null"]
+          minimum: 0
+          maximum: 100
+        submitted_at:
+          type: [string, "null"]
+          format: date-time
         created_at:
           type: string
           format: date-time
