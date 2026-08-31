@@ -7,6 +7,7 @@ use App\Domain\Learning\Models\Question;
 use App\Domain\Learning\Models\QuestionOption;
 use App\Domain\Learning\Models\Quiz;
 use App\Domain\Learning\Models\QuizAnswer;
+use App\Domain\Learning\Models\QuizAttempt;
 use Database\Seeders\BorobudurSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
@@ -27,6 +28,7 @@ class MicroQuizAttemptTest extends TestCase
     {
         $this->postJson('/api/v1/learning-sessions/1/quiz-attempts')->assertUnauthorized();
         $this->putJson('/api/v1/quiz-attempts/1/answers/1')->assertUnauthorized();
+        $this->postJson('/api/v1/quiz-attempts/1/submit')->assertUnauthorized();
     }
 
     public function test_student_starts_a_micro_quiz_attempt_during_owned_exploration_session(): void
@@ -248,5 +250,173 @@ class MicroQuizAttemptTest extends TestCase
             ['selected_option_id' => $option->id],
             ['X-Session-Write-Token' => $tokenA],
         )->assertConflict();
+    }
+
+    public function test_student_submits_a_complete_attempt_and_can_start_a_later_practice_attempt(): void
+    {
+        [$user, $session, $writeToken] = $this->createLearningSession('quiz-submit', 'a', exploration: true);
+        $quiz = Quiz::query()->sole();
+        $secondQuestion = Question::create([
+            'quiz_id' => $quiz->id,
+            'prompt' => 'Pertanyaan kedua',
+            'position' => 2,
+        ]);
+        QuestionOption::create([
+            'question_id' => $secondQuestion->id,
+            'text' => 'Jawaban salah',
+            'position' => 1,
+            'is_correct' => false,
+            'feedback' => 'Coba lagi.',
+        ]);
+        QuestionOption::create([
+            'question_id' => $secondQuestion->id,
+            'text' => 'Jawaban benar',
+            'position' => 2,
+            'is_correct' => true,
+            'feedback' => 'Benar.',
+        ]);
+        $questions = Question::query()->with('options')->orderBy('position')->get();
+        Sanctum::actingAs($user);
+
+        $attemptId = $this->postJson(
+            "/api/v1/learning-sessions/{$session->id}/quiz-attempts",
+            ['quiz_id' => $quiz->id],
+            ['X-Session-Write-Token' => $writeToken],
+        )->json('data.id');
+
+        $this->putJson(
+            "/api/v1/quiz-attempts/{$attemptId}/answers/{$questions[0]->id}",
+            ['selected_option_id' => $questions[0]->options->firstWhere('is_correct', true)->id],
+            ['X-Session-Write-Token' => $writeToken],
+        )->assertOk();
+
+        $lateQuestion = Question::create([
+            'quiz_id' => $quiz->id,
+            'prompt' => 'Pertanyaan baru',
+            'position' => 3,
+        ]);
+        $lateOption = QuestionOption::create([
+            'question_id' => $lateQuestion->id,
+            'text' => 'Pilihan baru',
+            'position' => 1,
+            'is_correct' => true,
+            'feedback' => 'Benar.',
+        ]);
+
+        $this->putJson(
+            "/api/v1/quiz-attempts/{$attemptId}/answers/{$lateQuestion->id}",
+            ['selected_option_id' => $lateOption->id],
+            ['X-Session-Write-Token' => $writeToken],
+        )
+            ->assertUnprocessable()
+            ->assertJsonPath(
+                'error.details.fields.question_id.0',
+                'The question does not belong to this quiz attempt.',
+            );
+
+        $this->putJson(
+            "/api/v1/quiz-attempts/{$attemptId}/answers/{$questions[1]->id}",
+            ['selected_option_id' => $questions[1]->options->firstWhere('is_correct', false)->id],
+            ['X-Session-Write-Token' => $writeToken],
+        )->assertOk();
+
+        $questions[0]->options->firstWhere('is_correct', true)->update(['is_correct' => false]);
+
+        $submitted = $this->postJson(
+            "/api/v1/quiz-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $writeToken],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.status', 'submitted')
+            ->assertJsonPath('data.score', 50)
+            ->assertJsonStructure(['data' => ['submitted_at']]);
+
+        $this->assertNotNull($submitted->json('data.submitted_at'));
+        $this->assertDatabaseHas('quiz_attempts', [
+            'id' => $attemptId,
+            'status' => 'submitted',
+            'score' => 50,
+        ]);
+
+        $this->postJson(
+            "/api/v1/quiz-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $writeToken],
+        )->assertConflict();
+
+        $this->putJson(
+            "/api/v1/quiz-attempts/{$attemptId}/answers/{$lateQuestion->id}",
+            ['selected_option_id' => $lateOption->id],
+            ['X-Session-Write-Token' => $writeToken],
+        )->assertConflict();
+
+        $this->postJson(
+            "/api/v1/learning-sessions/{$session->id}/quiz-attempts",
+            ['quiz_id' => $quiz->id],
+            ['X-Session-Write-Token' => $writeToken],
+        )
+            ->assertCreated()
+            ->assertJsonPath('data.status', 'draft');
+
+        $this->assertTrue(QuizAttempt::query()
+            ->where('learning_session_id', $session->id)
+            ->where('quiz_id', $quiz->id)
+            ->where('status', 'submitted')
+            ->exists());
+    }
+
+    public function test_submission_enforces_owner_token_phase_completeness_and_server_owned_fields(): void
+    {
+        [$studentA, $sessionA, $tokenA] = $this->createLearningSession('quiz-submit-guard', 'a', exploration: true);
+        [$studentB, $sessionB, $tokenB] = $this->createLearningSession('quiz-submit-guard', 'b', exploration: true);
+        $quiz = Quiz::query()->sole();
+        Sanctum::actingAs($studentA);
+
+        $attemptId = $this->postJson(
+            "/api/v1/learning-sessions/{$sessionA->id}/quiz-attempts",
+            ['quiz_id' => $quiz->id],
+            ['X-Session-Write-Token' => $tokenA],
+        )->json('data.id');
+
+        $this->postJson(
+            "/api/v1/quiz-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => 'invalid'],
+        )->assertForbidden();
+
+        Sanctum::actingAs($studentB);
+
+        $this->postJson(
+            "/api/v1/quiz-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $tokenB],
+        )->assertNotFound();
+
+        Sanctum::actingAs($studentA);
+
+        $this->postJson(
+            "/api/v1/quiz-attempts/{$attemptId}/submit",
+            ['score' => 100, 'status' => 'submitted', 'unexpected' => true],
+            ['X-Session-Write-Token' => $tokenA],
+        )->assertUnprocessable();
+
+        $this->postJson(
+            "/api/v1/quiz-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $tokenA],
+        )->assertConflict();
+
+        $this->assertSame('draft', QuizAttempt::query()->findOrFail($attemptId)->status);
+
+        $sessionA->transitionTo(LearningSessionPhase::Posttest);
+
+        $this->postJson(
+            "/api/v1/quiz-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $tokenA],
+        )->assertConflict();
+
+        $this->assertSame(LearningSessionPhase::Exploration, $sessionB->phase);
     }
 }
