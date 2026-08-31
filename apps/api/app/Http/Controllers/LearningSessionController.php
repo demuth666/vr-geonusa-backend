@@ -3,8 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Identity\Models\User;
+use App\Domain\Learning\Actions\CalculateExplorationProgress;
+use App\Domain\Learning\Actions\CompleteExploration;
 use App\Domain\Learning\Actions\CreateLearningSession;
 use App\Domain\Learning\Models\LearningSession;
+use App\Http\Requests\CompleteExplorationRequest;
 use App\Http\Requests\CreateLearningSessionRequest;
 use App\Http\Resources\LearningSessionResource;
 use Illuminate\Http\JsonResponse;
@@ -65,5 +68,40 @@ class LearningSessionController extends Controller
         );
 
         return LearningSessionResource::make($session);
+    }
+
+    public function progress(
+        Request $request,
+        CalculateExplorationProgress $calculateProgress,
+        int $id,
+    ): JsonResponse {
+        /** @var User $user */
+        $user = $request->user();
+        $session = LearningSession::query()
+            ->ownedBy($user)
+            ->with('learningExperienceRevision')
+            ->findOrFail($id);
+
+        return response()->json([
+            'data' => $calculateProgress->handle($session),
+        ]);
+    }
+
+    public function completeExploration(
+        CompleteExplorationRequest $request,
+        CompleteExploration $completeExploration,
+        int $id,
+    ): LearningSessionResource {
+        /** @var User $user */
+        $user = $request->user();
+        $session = $completeExploration->handle(
+            $user,
+            $id,
+            $request->header('X-Session-Write-Token'),
+        );
+
+        return LearningSessionResource::make(
+            $session->load(['researchParticipant', 'currentPanoramaNode']),
+        );
     }
 }
