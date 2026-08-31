@@ -21,6 +21,7 @@ class LearningSession extends Model
 
     protected $fillable = [
         'research_participant_id',
+        'learning_experience_revision_id',
         'write_token_hash',
     ];
 
@@ -38,6 +39,11 @@ class LearningSession extends Model
     public function researchParticipant(): BelongsTo
     {
         return $this->belongsTo(ResearchParticipant::class);
+    }
+
+    public function learningExperienceRevision(): BelongsTo
+    {
+        return $this->belongsTo(LearningExperienceRevision::class);
     }
 
     public function currentPanoramaNode(): BelongsTo

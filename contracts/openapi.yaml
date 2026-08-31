@@ -137,7 +137,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
-          description: The student already has an active learning session
+          description: The student already has an active learning session or the study has no published Learning Experience Revision
           content:
             application/json:
               schema:
@@ -178,6 +178,80 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/progress:
+    get:
+      operationId: getExplorationProgress
+      summary: Get server-calculated completion status for the owned session's required exploration activities
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+      responses:
+        "200":
+          description: Required activity completion status without Micro Quiz answer or correctness data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExplorationProgressResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/exploration/complete:
+    post:
+      operationId: completeExploration
+      summary: Advance an owned exploration session to posttest after every required activity is complete
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+        - $ref: "#/components/parameters/SessionWriteToken"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        "200":
+          description: Exploration completed and the session advanced to posttest
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LearningSessionResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Invalid session write token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: A required activity is incomplete or the session is not in exploration
           content:
             application/json:
               schema:
@@ -1019,6 +1093,58 @@ components:
         respondent_code:
           type: string
           pattern: ^RSP-[A-Z0-9]{6}$
+    ExplorationProgressResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/ExplorationProgress"
+    ExplorationProgress:
+      type: object
+      additionalProperties: false
+      required: [panorama_visits, learning_materials, micro_quizzes, completed]
+      properties:
+        panorama_visits:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequiredPanoramaVisitProgress"
+        learning_materials:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequiredLearningMaterialProgress"
+        micro_quizzes:
+          type: array
+          items:
+            $ref: "#/components/schemas/RequiredMicroQuizProgress"
+        completed:
+          type: boolean
+    RequiredPanoramaVisitProgress:
+      type: object
+      additionalProperties: false
+      required: [panorama_node_id, completed]
+      properties:
+        panorama_node_id:
+          type: integer
+        completed:
+          type: boolean
+    RequiredLearningMaterialProgress:
+      type: object
+      additionalProperties: false
+      required: [heritage_object_id, completed]
+      properties:
+        heritage_object_id:
+          type: integer
+        completed:
+          type: boolean
+    RequiredMicroQuizProgress:
+      type: object
+      additionalProperties: false
+      required: [quiz_id, completed]
+      properties:
+        quiz_id:
+          type: integer
+        completed:
+          type: boolean
     LearningSession:
       type: object
       required: [id, respondent_code, phase, current_panorama_node, created_at, updated_at]

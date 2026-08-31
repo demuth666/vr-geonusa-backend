@@ -4,6 +4,7 @@ namespace App\Domain\Learning\Actions;
 
 use App\Domain\Identity\Models\StudentProfile;
 use App\Domain\Identity\Models\User;
+use App\Domain\Learning\Models\LearningExperienceRevision;
 use App\Domain\Learning\Models\LearningSession;
 use App\Domain\Research\Models\ResearchParticipant;
 use Illuminate\Support\Facades\DB;
@@ -30,9 +31,20 @@ class CreateLearningSession
                 throw new ConflictHttpException('An active learning session already exists.');
             }
 
+            $revision = LearningExperienceRevision::query()
+                ->published()
+                ->where('research_study_id', $participant->research_study_id)
+                ->orderByDesc('version')
+                ->first();
+
+            if (! $revision) {
+                throw new ConflictHttpException('No published Learning Experience Revision is available for this study.');
+            }
+
             $writeToken = Str::random(64);
             $session = LearningSession::create([
                 'research_participant_id' => $participant->id,
+                'learning_experience_revision_id' => $revision->id,
                 'write_token_hash' => hash('sha256', $writeToken),
             ]);
 

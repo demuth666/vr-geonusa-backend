@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Heritage\Models\HeritageObject;
+use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Identity\Models\StudentProfile;
 use App\Domain\Identity\Models\User;
+use App\Domain\Learning\Actions\ManageLearningExperienceRevision;
 use App\Domain\Learning\Enums\LearningSessionPhase;
 use App\Domain\Learning\Models\LearningSession;
+use App\Domain\Learning\Models\Quiz;
 use App\Domain\Research\Models\ResearchParticipant;
 use App\Domain\Research\Models\ResearchStudy;
 use App\Domain\School\Models\School;
+use Database\Seeders\BorobudurSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use LogicException;
@@ -17,6 +22,13 @@ use Tests\TestCase;
 class LearningSessionTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(BorobudurSeeder::class);
+    }
 
     public function test_learning_session_endpoints_require_authentication(): void
     {
@@ -167,6 +179,12 @@ class LearningSessionTest extends TestCase
             'research_study_id' => $study->id,
             'student_profile_id' => $profile->id,
         ]);
+        app(ManageLearningExperienceRevision::class)->createAndPublish(
+            $study->id,
+            [PanoramaNode::query()->firstOrFail()->id],
+            [HeritageObject::query()->sole()->id],
+            [Quiz::query()->sole()->id],
+        );
 
         return [$user, $participant];
     }
