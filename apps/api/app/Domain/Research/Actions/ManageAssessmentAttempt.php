@@ -148,9 +148,11 @@ class ManageAssessmentAttempt
                 'submitted_at' => now(),
             ])->save();
 
-            if ($attempt->instrument->type === AssessmentType::Pretest) {
-                $attempt->learningSession->transitionTo(LearningSessionPhase::Exploration);
-            }
+            match ($attempt->instrument->type) {
+                AssessmentType::Pretest => $attempt->learningSession->transitionTo(LearningSessionPhase::Exploration),
+                AssessmentType::Posttest => $attempt->learningSession->transitionTo(LearningSessionPhase::SelfEfficacy),
+                AssessmentType::SelfEfficacy => null,
+            };
 
             return $this->load($attempt);
         });
