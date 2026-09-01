@@ -2,14 +2,19 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Heritage\Models\HeritageObject;
+use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Models\StudentProfile;
+use App\Domain\Learning\Actions\ManageLearningExperienceRevision;
+use App\Domain\Learning\Models\Quiz;
 use App\Domain\Research\Models\ResearchParticipant;
 use App\Domain\Research\Models\ResearchStudy;
 use App\Filament\Resources\ResearchParticipants\Pages\ManageResearchParticipants;
 use App\Filament\Resources\ResearchParticipants\ResearchParticipantResource;
 use App\Filament\Resources\ResearchStudies\Pages\ManageResearchStudies;
 use App\Filament\Resources\ResearchStudies\ResearchStudyResource;
+use Database\Seeders\BorobudurSeeder;
 use Database\Seeders\UserSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -28,6 +33,7 @@ class ResearchBackOfficeTest extends TestCase
         parent::setUp();
 
         $this->seed(UserSeeder::class);
+        $this->seed(BorobudurSeeder::class);
         Filament::setCurrentPanel(Filament::getPanel('admin'));
     }
 
@@ -111,6 +117,12 @@ class ResearchBackOfficeTest extends TestCase
             ->assertHasNoActionErrors();
 
         $study = ResearchStudy::query()->where('name', 'Borobudur Filament Study')->firstOrFail();
+        app(ManageLearningExperienceRevision::class)->createAndPublish(
+            $study->id,
+            [PanoramaNode::query()->firstOrFail()->id],
+            [HeritageObject::query()->sole()->id],
+            [Quiz::query()->sole()->id],
+        );
 
         $this->callFilamentAction(
             Livewire::test(ManageResearchParticipants::class),
@@ -160,5 +172,4 @@ class ResearchBackOfficeTest extends TestCase
 
         $this->assertDatabaseCount('research_participants', 1);
     }
-
 }

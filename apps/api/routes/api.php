@@ -31,7 +31,8 @@ Route::prefix('v1')->group(function () {
         Route::get('/me/learning-sessions/active', [LearningSessionController::class, 'active']);
         Route::post('/learning-sessions', [LearningSessionController::class, 'store']);
         Route::get('/learning-sessions/{id}', [LearningSessionController::class, 'show']);
-        Route::get('/learning-sessions/{id}/result', [LearningSessionController::class, 'result']);
+        Route::get('/learning-sessions/{id}/progress', [LearningSessionController::class, 'progress']);
+        Route::post('/learning-sessions/{id}/exploration/complete', [LearningSessionController::class, 'completeExploration']);
         Route::post('/learning-sessions/{id}/panorama-visits', [PanoramaVisitController::class, 'store']);
         Route::post('/learning-sessions/{id}/materials/{objectId}/viewed', [LearningMaterialController::class, 'viewed']);
         Route::post('/learning-sessions/{id}/quiz-attempts', [QuizAttemptController::class, 'store']);
