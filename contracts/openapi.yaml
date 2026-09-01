@@ -593,7 +593,7 @@ paths:
               $ref: "#/components/schemas/SubmitAssessmentAttemptRequest"
       responses:
         "200":
-          description: Assessment submitted; a pretest submission advances the session to exploration
+          description: Assessment submitted; pretest advances to exploration and posttest advances to self-efficacy
           content:
             application/json:
               schema:

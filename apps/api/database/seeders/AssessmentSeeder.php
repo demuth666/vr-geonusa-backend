@@ -20,48 +20,53 @@ class AssessmentSeeder extends Seeder
         $study = ResearchStudy::firstOrCreate([
             'name' => 'VR GeoNusa Borobudur Study',
         ]);
-        $instrument = AssessmentInstrument::updateOrCreate(
-            [
-                'research_study_id' => $study->id,
-                'type' => AssessmentType::Pretest->value,
-            ],
-            ['title' => 'Pretest Geometri Borobudur'],
-        );
-
         foreach ([
-            [
-                'prompt' => 'Bangun ruang apakah yang paling mendekati bentuk stupa utama Borobudur?',
-                'options' => [
-                    ['text' => 'Setengah bola', 'is_correct' => true],
-                    ['text' => 'Kubus', 'is_correct' => false],
-                    ['text' => 'Balok', 'is_correct' => false],
-                ],
-            ],
-            [
-                'prompt' => 'Manakah unsur yang merupakan ciri bangun ruang?',
-                'options' => [
-                    ['text' => 'Memiliki volume', 'is_correct' => true],
-                    ['text' => 'Hanya memiliki panjang', 'is_correct' => false],
-                    ['text' => 'Tidak memiliki sisi', 'is_correct' => false],
-                ],
-            ],
-        ] as $itemPosition => $itemData) {
-            $item = AssessmentItem::updateOrCreate(
+            [AssessmentType::Pretest, 'Pretest Geometri Borobudur'],
+            [AssessmentType::Posttest, 'Posttest Geometri Borobudur'],
+        ] as [$type, $title]) {
+            $instrument = AssessmentInstrument::updateOrCreate(
                 [
-                    'assessment_instrument_id' => $instrument->id,
-                    'position' => $itemPosition + 1,
+                    'research_study_id' => $study->id,
+                    'type' => $type->value,
                 ],
-                ['prompt' => $itemData['prompt']],
+                ['title' => $title],
             );
 
-            foreach ($itemData['options'] as $optionPosition => $optionData) {
-                AssessmentOption::updateOrCreate(
-                    [
-                        'assessment_item_id' => $item->id,
-                        'position' => $optionPosition + 1,
+            foreach ([
+                [
+                    'prompt' => 'Bangun ruang apakah yang paling mendekati bentuk stupa utama Borobudur?',
+                    'options' => [
+                        ['text' => 'Setengah bola', 'is_correct' => true],
+                        ['text' => 'Kubus', 'is_correct' => false],
+                        ['text' => 'Balok', 'is_correct' => false],
                     ],
-                    $optionData,
+                ],
+                [
+                    'prompt' => 'Manakah unsur yang merupakan ciri bangun ruang?',
+                    'options' => [
+                        ['text' => 'Memiliki volume', 'is_correct' => true],
+                        ['text' => 'Hanya memiliki panjang', 'is_correct' => false],
+                        ['text' => 'Tidak memiliki sisi', 'is_correct' => false],
+                    ],
+                ],
+            ] as $itemPosition => $itemData) {
+                $item = AssessmentItem::updateOrCreate(
+                    [
+                        'assessment_instrument_id' => $instrument->id,
+                        'position' => $itemPosition + 1,
+                    ],
+                    ['prompt' => $itemData['prompt']],
                 );
+
+                foreach ($itemData['options'] as $optionPosition => $optionData) {
+                    AssessmentOption::updateOrCreate(
+                        [
+                            'assessment_item_id' => $item->id,
+                            'position' => $optionPosition + 1,
+                        ],
+                        $optionData,
+                    );
+                }
             }
         }
     }
