@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\HeritageSiteController;
 use App\Http\Controllers\LearningMaterialController;
 use App\Http\Controllers\LearningSessionController;
+use App\Http\Controllers\MlPredictionController;
 use App\Http\Controllers\PanoramaNodeController;
 use App\Http\Controllers\PanoramaVisitController;
 use App\Http\Controllers\QuizAttemptController;
@@ -34,6 +35,7 @@ Route::prefix('v1')->group(function () {
         Route::get('/learning-sessions/{id}/progress', [LearningSessionController::class, 'progress']);
         Route::post('/learning-sessions/{id}/exploration/complete', [LearningSessionController::class, 'completeExploration']);
         Route::post('/learning-sessions/{id}/panorama-visits', [PanoramaVisitController::class, 'store']);
+        Route::post('/learning-sessions/{id}/ml-predictions', [MlPredictionController::class, 'store']);
         Route::post('/learning-sessions/{id}/materials/{objectId}/viewed', [LearningMaterialController::class, 'viewed']);
         Route::post('/learning-sessions/{id}/quiz-attempts', [QuizAttemptController::class, 'store']);
         Route::put('/quiz-attempts/{attemptId}/answers/{questionId}', [QuizAttemptController::class, 'answer']);
