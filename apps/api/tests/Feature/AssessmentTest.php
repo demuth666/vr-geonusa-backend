@@ -191,9 +191,9 @@ class AssessmentTest extends TestCase
         $this->seed(AssessmentSeeder::class);
         $this->seed(AssessmentSeeder::class);
 
-        $this->assertDatabaseCount('assessment_instruments', 2);
-        $this->assertDatabaseCount('assessment_items', 4);
-        $this->assertDatabaseCount('assessment_options', 12);
+        $this->assertDatabaseCount('assessment_instruments', 3);
+        $this->assertDatabaseCount('assessment_items', 6);
+        $this->assertDatabaseCount('assessment_options', 18);
     }
 
     public function test_posttest_is_phase_gated_scored_locked_and_advances_to_self_efficacy(): void
@@ -257,6 +257,91 @@ class AssessmentTest extends TestCase
             ['X-Session-Write-Token' => $writeToken],
         )->assertConflict();
         $this->assertSame(LearningSessionPhase::SelfEfficacy, $session->fresh()->phase);
+    }
+
+    public function test_self_efficacy_is_owner_token_and_phase_gated_then_locks_without_a_score_and_completes(): void
+    {
+        [$user, $session, $writeToken] = $this->createLearningSession('self-efficacy', 'a');
+        $session->transitionTo(LearningSessionPhase::Exploration);
+        $session->transitionTo(LearningSessionPhase::Posttest);
+        Sanctum::actingAs($user);
+
+        $posttestAttemptId = $this->startAttempt($session, $writeToken)
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'posttest')
+            ->json('data.id');
+        $posttestItems = AssessmentAttempt::query()
+            ->with('instrument.items.options')
+            ->findOrFail($posttestAttemptId)
+            ->instrument
+            ->items;
+
+        foreach ($posttestItems as $item) {
+            $this->putJson(
+                "/api/v1/assessment-attempts/{$posttestAttemptId}/answers/{$item->id}",
+                ['selected_option_id' => $item->options->first()->id],
+                ['X-Session-Write-Token' => $writeToken],
+            )->assertOk();
+        }
+
+        $this->postJson(
+            "/api/v1/assessment-attempts/{$posttestAttemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $writeToken],
+        )->assertOk();
+        $this->assertSame(LearningSessionPhase::SelfEfficacy, $session->fresh()->phase);
+
+        $this->startAttempt($session, 'invalid')->assertForbidden();
+
+        [$otherUser] = $this->createLearningSession('self-efficacy', 'b');
+        Sanctum::actingAs($otherUser);
+        $this->startAttempt($session, $writeToken)->assertNotFound();
+
+        Sanctum::actingAs($user);
+        $attemptId = $this->startAttempt($session, $writeToken)
+            ->assertCreated()
+            ->assertJsonPath('data.type', 'self_efficacy')
+            ->json('data.id');
+        $items = AssessmentAttempt::query()
+            ->with('instrument.items.options')
+            ->findOrFail($attemptId)
+            ->instrument
+            ->items;
+        $this->assertFalse($items->flatMap->options->contains('is_correct', true));
+
+        foreach ($items as $item) {
+            $this->putJson(
+                "/api/v1/assessment-attempts/{$attemptId}/answers/{$item->id}",
+                ['selected_option_id' => $item->options->first()->id],
+                ['X-Session-Write-Token' => $writeToken],
+            )->assertOk();
+        }
+
+        $submitted = $this->postJson(
+            "/api/v1/assessment-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $writeToken],
+        )
+            ->assertOk()
+            ->assertJsonPath('data.status', 'submitted')
+            ->assertJsonPath('data.type', 'self_efficacy');
+
+        $this->assertStringNotContainsString('is_correct', $submitted->getContent());
+        $this->assertStringNotContainsString('score', $submitted->getContent());
+        $this->assertNull(AssessmentAttempt::query()->findOrFail($attemptId)->score);
+        $this->assertSame([null, null], AssessmentAnswer::query()
+            ->where('assessment_attempt_id', $attemptId)
+            ->orderBy('assessment_item_id')
+            ->pluck('is_correct')
+            ->all());
+        $this->assertSame(LearningSessionPhase::Completed, $session->fresh()->phase);
+
+        $this->postJson(
+            "/api/v1/assessment-attempts/{$attemptId}/submit",
+            [],
+            ['X-Session-Write-Token' => $writeToken],
+        )->assertConflict();
+        $this->assertSame(LearningSessionPhase::Completed, $session->fresh()->phase);
     }
 
     private function startAttempt(LearningSession $session, string $writeToken)

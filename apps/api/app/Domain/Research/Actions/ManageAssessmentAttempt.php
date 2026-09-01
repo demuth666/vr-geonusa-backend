@@ -151,7 +151,7 @@ class ManageAssessmentAttempt
             match ($attempt->instrument->type) {
                 AssessmentType::Pretest => $attempt->learningSession->transitionTo(LearningSessionPhase::Exploration),
                 AssessmentType::Posttest => $attempt->learningSession->transitionTo(LearningSessionPhase::SelfEfficacy),
-                AssessmentType::SelfEfficacy => null,
+                AssessmentType::SelfEfficacy => $attempt->learningSession->transitionTo(LearningSessionPhase::Completed),
             };
 
             return $this->load($attempt);

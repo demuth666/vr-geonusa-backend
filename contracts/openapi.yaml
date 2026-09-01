@@ -579,7 +579,7 @@ paths:
   /api/v1/assessment-attempts/{attemptId}/submit:
     post:
       operationId: submitAssessmentAttempt
-      summary: Score and lock a complete assessment attempt
+      summary: Submit and lock a complete assessment attempt
       security:
         - bearerAuth: []
       parameters:
@@ -593,7 +593,7 @@ paths:
               $ref: "#/components/schemas/SubmitAssessmentAttemptRequest"
       responses:
         "200":
-          description: Assessment submitted; pretest advances to exploration and posttest advances to self-efficacy
+          description: Assessment submitted; pretest advances to exploration, posttest to self-efficacy, and self-efficacy to completed
           content:
             application/json:
               schema:
