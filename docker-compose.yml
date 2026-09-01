@@ -90,6 +90,7 @@ services:
       AWS_URL: http://127.0.0.1:${MINIO_API_HOST_PORT}/${MINIO_BUCKET:-vr-geonusa-dev}
       AWS_ENDPOINT: http://minio:9000
       AWS_USE_PATH_STYLE_ENDPOINT: "true"
+      ML_SERVICE_URL: http://ml:8001
     ports:
       - "127.0.0.1:${API_HOST_PORT}:8000"
     depends_on:
