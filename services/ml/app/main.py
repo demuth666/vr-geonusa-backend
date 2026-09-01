@@ -1,7 +1,7 @@
 from typing import Annotated
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, Field
 
 from app.detector import detector
 from app.preprocessing import is_valid_image
@@ -10,8 +10,6 @@ app = FastAPI(title="VR-GeoNusa ML Service")
 
 
 class Detection(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
-
     class_: str = Field(alias="class")
     confidence: float
     bounding_box: list[int]
