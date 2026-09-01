@@ -182,6 +182,33 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/result:
+    get:
+      operationId: getCompletedLearningSessionResult
+      summary: Get the authenticated student's safe completed-session result
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+      responses:
+        "200":
+          description: Completed learning session result without answer-level research data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompletedSessionResultResponse"
+        "401":
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Learning session not found, not owned by the student, or not completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /api/v1/learning-sessions/{id}/panorama-visits:
     post:
       operationId: recordPanoramaVisit
@@ -1057,6 +1084,42 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/LearningSession"
+    CompletedSessionResultResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/CompletedSessionResult"
+    CompletedSessionResult:
+      type: object
+      required: [id, phase, pretest_score, posttest_score, activity_summary]
+      properties:
+        id:
+          type: integer
+        phase:
+          type: string
+          enum: [completed]
+        pretest_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        posttest_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        activity_summary:
+          type: object
+          required: [panoramas_visited, materials_viewed, micro_quizzes_completed]
+          properties:
+            panoramas_visited:
+              type: integer
+              minimum: 0
+            materials_viewed:
+              type: integer
+              minimum: 0
+            micro_quizzes_completed:
+              type: integer
+              minimum: 0
     ActiveLearningSessionResponse:
       type: object
       required: [data]

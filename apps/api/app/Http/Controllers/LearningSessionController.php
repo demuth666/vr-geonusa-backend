@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Domain\Identity\Models\User;
 use App\Domain\Learning\Actions\CreateLearningSession;
+use App\Domain\Learning\Enums\LearningSessionPhase;
 use App\Domain\Learning\Models\LearningSession;
 use App\Http\Requests\CreateLearningSessionRequest;
+use App\Http\Resources\CompletedSessionResultResource;
 use App\Http\Resources\LearningSessionResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -65,5 +67,18 @@ class LearningSessionController extends Controller
         );
 
         return LearningSessionResource::make($session);
+    }
+
+    public function result(Request $request, int $id): CompletedSessionResultResource
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $session = LearningSession::query()
+            ->ownedBy($user)
+            ->where('phase', LearningSessionPhase::Completed->value)
+            ->with(['assessmentAttempts.instrument', 'activityEvents', 'quizAttempts'])
+            ->findOrFail($id);
+
+        return CompletedSessionResultResource::make($session);
     }
 }

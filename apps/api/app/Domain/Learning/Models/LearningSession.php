@@ -55,6 +55,11 @@ class LearningSession extends Model
         return $this->hasMany(AssessmentAttempt::class);
     }
 
+    public function quizAttempts(): HasMany
+    {
+        return $this->hasMany(QuizAttempt::class);
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('phase', '!=', LearningSessionPhase::Completed->value);
