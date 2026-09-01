@@ -1183,6 +1183,42 @@ components:
       properties:
         data:
           $ref: "#/components/schemas/LearningSession"
+    CompletedSessionResultResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: "#/components/schemas/CompletedSessionResult"
+    CompletedSessionResult:
+      type: object
+      required: [id, phase, pretest_score, posttest_score, activity_summary]
+      properties:
+        id:
+          type: integer
+        phase:
+          type: string
+          enum: [completed]
+        pretest_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        posttest_score:
+          type: integer
+          minimum: 0
+          maximum: 100
+        activity_summary:
+          type: object
+          required: [panoramas_visited, materials_viewed, micro_quizzes_completed]
+          properties:
+            panoramas_visited:
+              type: integer
+              minimum: 0
+            materials_viewed:
+              type: integer
+              minimum: 0
+            micro_quizzes_completed:
+              type: integer
+              minimum: 0
     ActiveLearningSessionResponse:
       type: object
       required: [data]
