@@ -9,6 +9,9 @@ use App\Domain\Heritage\Models\HeritageSite;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Learning\Models\ActivityEvent;
 use App\Domain\Learning\Models\LearningSession;
+use App\Domain\MachineLearning\Models\MlClassMapping;
+use App\Domain\MachineLearning\Models\MlModel;
+use App\Domain\MachineLearning\Models\MlModelVersion;
 use App\Domain\Research\Models\ResearchParticipant;
 use App\Domain\Research\Models\ResearchStudy;
 use App\Filament\Resources\HeritageObjects\HeritageObjectResource;
@@ -244,6 +247,26 @@ class HeritageObjectBackOfficeTest extends TestCase
             'type' => ActivityEvent::MATERIAL_VIEWED,
             'heritage_object_id' => $heritageObject->id,
             'occurred_at' => now(),
+        ]);
+
+        $this->expectException(HeritageObjectInUse::class);
+
+        app(DeleteHeritageObject::class)->execute($heritageObject);
+    }
+
+    public function test_heritage_object_with_an_ml_class_mapping_cannot_be_deleted(): void
+    {
+        $heritageObject = HeritageObject::query()->create([
+            'heritage_site_id' => HeritageSite::query()->sole()->id,
+            'name' => 'Objek Dengan Pemetaan Kelas',
+            'description' => null,
+        ]);
+        $model = MlModel::query()->create(['key' => 'geometry-detector', 'name' => 'Geometry Detector']);
+        $version = MlModelVersion::query()->create(['ml_model_id' => $model->id, 'version' => 'dummy-v1']);
+        MlClassMapping::query()->create([
+            'ml_model_version_id' => $version->id,
+            'heritage_object_id' => $heritageObject->id,
+            'class_key' => 'objek-baru',
         ]);
 
         $this->expectException(HeritageObjectInUse::class);

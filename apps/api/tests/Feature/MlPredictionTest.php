@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Heritage\Models\HeritageObject;
 use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Learning\Enums\LearningSessionPhase;
+use App\Domain\MachineLearning\Models\MlClassMapping;
 use App\Domain\MachineLearning\Models\MlDetection;
+use App\Domain\MachineLearning\Models\MlModel;
+use App\Domain\MachineLearning\Models\MlModelVersion;
 use Database\Seeders\BorobudurSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -176,6 +180,91 @@ class MlPredictionTest extends TestCase
         $this->assertDatabaseCount('ml_models', 0);
         $this->assertDatabaseCount('ml_inference_runs', 0);
         $this->assertSame(LearningSessionPhase::Exploration, $session->fresh()->phase);
+    }
+
+    public function test_a_known_detected_class_resolves_to_its_heritage_object_and_geometry_mapping(): void
+    {
+        [$user, $session, $writeToken] = $this->createLearningSession('ml-known', 'a', exploration: true);
+        $version = $this->seedClassMapping('dummy-v1', 'stupa');
+        Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v1', 'stupa'))]);
+        Sanctum::actingAs($user);
+
+        $this->predict($session->id, $writeToken)
+            ->assertCreated()
+            ->assertJsonPath('data.detections.0.class', 'stupa')
+            ->assertJsonPath('data.detections.0.heritage_object.slug', 'stupa')
+            ->assertJsonPath('data.detections.0.heritage_object.name', 'Stupa')
+            ->assertJsonPath('data.detections.0.geometry_mappings.0.semantics', 'didekati sebagai')
+            ->assertJsonPath('data.detections.0.geometry_mappings.0.geometry_shape.slug', 'setengah-bola');
+
+        $this->assertDatabaseHas('ml_class_mappings', [
+            'ml_model_version_id' => $version->id,
+            'class_key' => 'stupa',
+        ]);
+    }
+
+    public function test_an_unknown_detected_class_remains_persisted_but_unresolved(): void
+    {
+        [$user, $session, $writeToken] = $this->createLearningSession('ml-unknown', 'a', exploration: true);
+        $this->seedClassMapping('dummy-v1', 'stupa');
+        Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v1', 'unrecognized-class'))]);
+        Sanctum::actingAs($user);
+
+        $this->predict($session->id, $writeToken)
+            ->assertCreated()
+            ->assertJsonPath('data.detections.0.class', 'unrecognized-class')
+            ->assertJsonPath('data.detections.0.heritage_object', null)
+            ->assertJsonPath('data.detections.0.geometry_mappings', []);
+
+        $this->assertDatabaseHas('ml_detections', ['class_key' => 'unrecognized-class']);
+    }
+
+    public function test_resolution_is_scoped_to_the_reported_model_version(): void
+    {
+        [$user, $session, $writeToken] = $this->createLearningSession('ml-versioned', 'a', exploration: true);
+        $this->seedClassMapping('dummy-v1', 'stupa');
+        Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v2', 'stupa'))]);
+        Sanctum::actingAs($user);
+
+        $this->predict($session->id, $writeToken)
+            ->assertCreated()
+            ->assertJsonPath('data.model_version', 'dummy-v2')
+            ->assertJsonPath('data.detections.0.class', 'stupa')
+            ->assertJsonPath('data.detections.0.heritage_object', null)
+            ->assertJsonPath('data.detections.0.geometry_mappings', []);
+    }
+
+    private function seedClassMapping(string $modelVersion, string $classKey): MlModelVersion
+    {
+        $model = MlModel::firstOrCreate(
+            ['key' => 'geometry-detector'],
+            ['name' => 'Geometry Detector'],
+        );
+        $version = MlModelVersion::firstOrCreate([
+            'ml_model_id' => $model->id,
+            'version' => $modelVersion,
+        ]);
+        MlClassMapping::create([
+            'ml_model_version_id' => $version->id,
+            'heritage_object_id' => HeritageObject::query()->where('slug', 'stupa')->sole()->id,
+            'class_key' => $classKey,
+        ]);
+
+        return $version;
+    }
+
+    /** @return array<string, mixed> */
+    private function predictionPayload(string $modelVersion, string $detectedClass): array
+    {
+        return [
+            'model_version' => $modelVersion,
+            'inference_ms' => 10,
+            'detections' => [[
+                'class' => $detectedClass,
+                'confidence' => 0.95,
+                'bounding_box' => [10, 20, 100, 120],
+            ]],
+        ];
     }
 
     private function predict(int $sessionId, string $writeToken, ?int $panoramaNodeId = null)

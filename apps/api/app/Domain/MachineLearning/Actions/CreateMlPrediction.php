@@ -119,6 +119,12 @@ class CreateMlPrediction
                 'total_latency_ms' => max(0, (int) round((hrtime(true) - $startedAt) / 1_000_000)),
             ])->save();
 
+            $detectedClassKeys = collect($prediction['detections'])->pluck('class')->unique()->values();
+            $version->load(['classMappings' => fn ($query) => $query
+                ->whereIn('class_key', $detectedClassKeys)
+                ->with('heritageObject.geometryMappings.geometryShape'),
+            ]);
+
             return $run->setRelation('modelVersion', $version)
                 ->load('detections');
         });

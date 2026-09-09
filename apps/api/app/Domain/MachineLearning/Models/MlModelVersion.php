@@ -19,4 +19,9 @@ class MlModelVersion extends Model
     {
         return $this->hasMany(MlInferenceRun::class);
     }
+
+    public function classMappings(): HasMany
+    {
+        return $this->hasMany(MlClassMapping::class);
+    }
 }

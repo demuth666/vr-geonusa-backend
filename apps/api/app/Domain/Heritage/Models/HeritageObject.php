@@ -5,6 +5,7 @@ namespace App\Domain\Heritage\Models;
 use App\Domain\Geometry\Models\HeritageGeometryMapping;
 use App\Domain\Heritage\Models\Concerns\HasUniqueSlug;
 use App\Domain\Learning\Models\ActivityEvent;
+use App\Domain\MachineLearning\Models\MlClassMapping;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -50,6 +51,11 @@ class HeritageObject extends Model
     public function activityEvents(): HasMany
     {
         return $this->hasMany(ActivityEvent::class)->orderBy('id');
+    }
+
+    public function mlClassMappings(): HasMany
+    {
+        return $this->hasMany(MlClassMapping::class)->orderBy('id');
     }
 
     protected function slugScopeColumns(): array

@@ -311,7 +311,7 @@ paths:
   /api/v1/learning-sessions/{id}/ml-predictions:
     post:
       operationId: createMlPrediction
-      summary: Identify geometry in a camera viewport during exploration
+      summary: Identify geometry in a camera viewport during exploration, resolving known detector classes to heritage learning content
       security:
         - bearerAuth: []
       parameters:
@@ -1000,7 +1000,7 @@ components:
     MlDetection:
       type: object
       additionalProperties: false
-      required: [class, confidence, bounding_box]
+      required: [class, confidence, bounding_box, heritage_object, geometry_mappings]
       properties:
         class:
           type: string
@@ -1016,6 +1016,16 @@ components:
             type: integer
             minimum: 0
             maximum: 4096
+        heritage_object:
+          description: The Heritage Object resolved from this detection's class key within the reported model version, or null when the class key is unknown
+          oneOf:
+            - $ref: "#/components/schemas/HeritageObject"
+            - type: "null"
+        geometry_mappings:
+          description: Applicable Heritage Geometry Mapping and Geometry Shape content for the resolved Heritage Object; empty when unresolved
+          type: array
+          items:
+            $ref: "#/components/schemas/GeometryMappingSummary"
     RecordPanoramaVisitRequest:
       type: object
       additionalProperties: false
@@ -1526,18 +1536,24 @@ components:
             description:
               type: [string, "null"]
     HeritageGeometryMapping:
+      allOf:
+        - $ref: "#/components/schemas/GeometryMappingSummary"
+        - type: object
+          required: [learning_objectives]
+          properties:
+            learning_objectives:
+              type: array
+              items:
+                $ref: "#/components/schemas/LearningObjective"
+    GeometryMappingSummary:
       type: object
-      required: [semantics, geometry_shape, learning_objectives]
+      required: [semantics, geometry_shape]
       properties:
         semantics:
           type: string
           example: didekati sebagai
         geometry_shape:
           $ref: "#/components/schemas/GeometryShape"
-        learning_objectives:
-          type: array
-          items:
-            $ref: "#/components/schemas/LearningObjective"
     GeometryShape:
       type: object
       required: [id, name, slug, description]
