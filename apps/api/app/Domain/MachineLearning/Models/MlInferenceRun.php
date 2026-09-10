@@ -4,6 +4,8 @@ namespace App\Domain\MachineLearning\Models;
 
 use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Learning\Models\LearningSession;
+use App\Domain\MachineLearning\Enums\MlInferenceFailureReason;
+use App\Domain\MachineLearning\Enums\MlInferenceStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -19,6 +21,8 @@ class MlInferenceRun extends Model
         'camera_fov',
         'inference_ms',
         'total_latency_ms',
+        'status',
+        'failure_reason',
     ];
 
     protected function casts(): array
@@ -27,6 +31,8 @@ class MlInferenceRun extends Model
             'camera_yaw' => 'float',
             'camera_pitch' => 'float',
             'camera_fov' => 'float',
+            'status' => MlInferenceStatus::class,
+            'failure_reason' => MlInferenceFailureReason::class,
         ];
     }
 

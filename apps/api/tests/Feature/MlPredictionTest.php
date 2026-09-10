@@ -5,8 +5,11 @@ namespace Tests\Feature;
 use App\Domain\Heritage\Models\HeritageObject;
 use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Learning\Enums\LearningSessionPhase;
+use App\Domain\MachineLearning\Enums\MlInferenceFailureReason;
+use App\Domain\MachineLearning\Enums\MlInferenceStatus;
 use App\Domain\MachineLearning\Models\MlClassMapping;
 use App\Domain\MachineLearning\Models\MlDetection;
+use App\Domain\MachineLearning\Models\MlInferenceRun;
 use App\Domain\MachineLearning\Models\MlModel;
 use App\Domain\MachineLearning\Models\MlModelVersion;
 use Database\Seeders\BorobudurSeeder;
@@ -163,22 +166,73 @@ class MlPredictionTest extends TestCase
         Http::assertSent(fn ($request) => $request->url() === 'http://ml.test/v1/predict');
     }
 
-    public function test_ml_service_failures_do_not_persist_or_advance_the_session(): void
+    public function test_ml_service_failures_record_a_failed_inference_run_and_do_not_advance_the_session(): void
     {
         [$user, $session, $writeToken] = $this->createLearningSession('ml-failure', 'a', exploration: true);
-        Http::fake(['ml.test/*' => Http::response([], 500)]);
+        $node = PanoramaNode::query()->firstOrFail();
+        Sanctum::actingAs($user);
+
+        Http::fake(['ml.test/*' => Http::sequence()
+            ->push([], 500)
+            ->push(['unexpected' => 'response'])
+            ->pushFailedConnection()
+            ->pushFailedConnection('cURL error 28: Operation timed out'),
+        ]);
+
+        $this->predict($session->id, $writeToken, $node->id)->assertStatus(502);
+        $this->predict($session->id, $writeToken, $node->id)->assertStatus(502);
+        $this->predict($session->id, $writeToken, $node->id)->assertStatus(502);
+        $this->predict($session->id, $writeToken, $node->id)->assertStatus(502);
+
+        $this->assertDatabaseCount('ml_models', 0);
+        $this->assertDatabaseCount('ml_inference_runs', 4);
+        $this->assertDatabaseCount('ml_detections', 0);
+
+        $runs = MlInferenceRun::query()->orderBy('id')->get();
+        $expectedReasons = [
+            MlInferenceFailureReason::UpstreamError,
+            MlInferenceFailureReason::InvalidResponse,
+            MlInferenceFailureReason::ConnectionFailed,
+            MlInferenceFailureReason::Timeout,
+        ];
+
+        foreach ($runs as $index => $run) {
+            $this->assertSame(MlInferenceStatus::Failed, $run->status);
+            $this->assertSame($expectedReasons[$index], $run->failure_reason);
+            $this->assertNull($run->ml_model_version_id);
+            $this->assertNull($run->inference_ms);
+            $this->assertSame($session->id, $run->learning_session_id);
+            $this->assertSame($node->id, $run->panorama_node_id);
+            $this->assertSame(45.5, $run->camera_yaw);
+            $this->assertSame(-10.0, $run->camera_pitch);
+            $this->assertSame(90.0, $run->camera_fov);
+            $this->assertIsInt($run->total_latency_ms);
+            $this->assertGreaterThanOrEqual(0, $run->total_latency_ms);
+        }
+
+        $this->assertSame(LearningSessionPhase::Exploration, $session->fresh()->phase);
+    }
+
+    public function test_a_malformed_payload_retains_a_safely_supplied_model_version_without_inventing_one(): void
+    {
+        [$user, $session, $writeToken] = $this->createLearningSession('ml-invalid-payload', 'a', exploration: true);
+        Http::fake(['ml.test/*' => Http::response([
+            'model_version' => 'dummy-v1',
+            'detections' => 'not-an-array',
+        ])]);
         Sanctum::actingAs($user);
 
         $this->predict($session->id, $writeToken)->assertStatus(502);
 
-        Http::fake(['ml.test/*' => Http::response(['unexpected' => 'response'])]);
-        $this->predict($session->id, $writeToken)->assertStatus(502);
+        $this->assertDatabaseHas('ml_models', ['key' => 'geometry-detector']);
+        $this->assertDatabaseHas('ml_model_versions', ['version' => 'dummy-v1']);
+        $run = MlInferenceRun::query()->sole();
+        $this->assertSame(MlInferenceStatus::Failed, $run->status);
+        $this->assertSame(MlInferenceFailureReason::InvalidResponse, $run->failure_reason);
+        $this->assertNotNull($run->ml_model_version_id);
+        $this->assertSame('dummy-v1', $run->modelVersion->version);
+        $this->assertSame(0, MlDetection::query()->count());
 
-        Http::fake(['ml.test/*' => Http::failedConnection()]);
-        $this->predict($session->id, $writeToken)->assertStatus(502);
-
-        $this->assertDatabaseCount('ml_models', 0);
-        $this->assertDatabaseCount('ml_inference_runs', 0);
         $this->assertSame(LearningSessionPhase::Exploration, $session->fresh()->phase);
     }
 

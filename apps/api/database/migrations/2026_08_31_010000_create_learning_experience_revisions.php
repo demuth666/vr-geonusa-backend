@@ -46,7 +46,7 @@ return new class extends Migration
 
         if (DB::getDriverName() === 'pgsql') {
             DB::unprepared(<<<'SQL'
-                CREATE FUNCTION prevent_published_learning_experience_requirement_changes()
+                CREATE OR REPLACE FUNCTION prevent_published_learning_experience_requirement_changes()
                 RETURNS trigger AS $$
                 BEGIN
                     IF EXISTS (
