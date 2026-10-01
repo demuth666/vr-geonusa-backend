@@ -1,0 +1,6 @@
+-r requirements.txt
+# Ultralytics brings its own PyTorch runtime, which is what makes serving a model
+# artifact an opt-in install: the default image and the dummy detector never need it.
+# Note that PyPI hands Linux images the CUDA build of PyTorch; a CPU-only image should
+# install torch from https://download.pytorch.org/whl/cpu first.
+ultralytics==8.4.155

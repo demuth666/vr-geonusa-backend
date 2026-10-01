@@ -111,6 +111,14 @@ services:
     build:
       context: .
       dockerfile: infrastructure/docker/ml.Dockerfile
+      args:
+        INSTALL_YOLO: ${INSTALL_YOLO:-false}
+    environment:
+      ML_DETECTOR: ${ML_DETECTOR:-dummy}
+      ML_MODEL_PATH: ${ML_MODEL_PATH:-}
+      ML_MODEL_VERSION: ${ML_MODEL_VERSION:-}
+      ML_IMAGE_SIZE: ${ML_IMAGE_SIZE:-}
+      ML_CONFIDENCE_THRESHOLD: ${ML_CONFIDENCE_THRESHOLD:-}
     ports:
       - "127.0.0.1:${ML_HOST_PORT}:8001"
     healthcheck:

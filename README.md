@@ -41,6 +41,31 @@ the first super-admin after running migrations:
 docker compose run --rm api php artisan db:seed --class=AdminUserSeeder --force
 ```
 
+## ML detector
+
+The ML service serves either detector, selected by `ML_DETECTOR`:
+
+- `dummy` (default) answers with a fixed prediction, so tests, CI, and environments
+  without a model artifact keep working.
+- `yolo` loads the artifact at `ML_MODEL_PATH` once at startup and serves it on the
+  same `/v1/predict` route and in the same response shape.
+
+The image carries Ultralytics and PyTorch only when built with `INSTALL_YOLO=true`, so
+serving an artifact starts with one rebuild. After that, replacing the artifact is a
+configuration change only: make the checkpoint reachable inside the container at
+`ML_MODEL_PATH` and name it.
+
+```bash
+INSTALL_YOLO=true
+ML_DETECTOR=yolo
+ML_MODEL_PATH=/app/artifacts/yolov8n.pt
+ML_MODEL_VERSION=yolov8n-coco-v1
+```
+
+`ML_MODEL_VERSION` is reported on every prediction and recorded by Laravel against the
+inference run, so it must identify the artifact. The service refuses to start on a
+missing artifact, an unnamed model version, or a detector it does not have.
+
 ## Verify
 
 ```bash
