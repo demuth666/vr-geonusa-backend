@@ -7,7 +7,15 @@ import pytest
 from PIL import Image
 
 from app.config import DetectorKind, ModelSettings, Settings
-from app.detector import DummyDetector, YoloDetector, build_detector
+from app.detector import (
+    DUMMY_MODEL_VERSION,
+    DetectorStatus,
+    DummyDetector,
+    ModelUnavailable,
+    UnavailableDetector,
+    YoloDetector,
+    build_detector,
+)
 from app.inference import RawDetection
 
 
@@ -43,11 +51,12 @@ def detection(class_index: int = 0, confidence: float = 0.9) -> RawDetection:
     return RawDetection(class_index=class_index, confidence=confidence, box=(0.0, 160.0, 640.0, 480.0))
 
 
-def yolo_settings() -> Settings:
+def yolo_settings(artifact_path: Path | None = Path(__file__)) -> Settings:
+    """A YOLO deployment whose artifact is a file that is there; the load is still faked."""
     return Settings(
         detector=DetectorKind.YOLO,
         model=ModelSettings(
-            artifact_path=Path("artifacts/yolov8n.pt"),
+            artifact_path=artifact_path,
             model_version="yolov8n-coco-v1",
             input_size=640,
             confidence_threshold=0.25,
@@ -207,3 +216,50 @@ def test_build_detector_refuses_a_detector_it_has_no_model_settings_for() -> Non
 
     with pytest.raises(ValueError, match="yolo"):
         build_detector(Settings(detector=DetectorKind.YOLO, model=None), load)
+
+
+def test_build_detector_reports_the_dummy_detector_and_the_version_it_predicts_with() -> None:
+    detector = build_detector(Settings.from_environment({}), lambda model: FakeBackend())
+
+    assert detector.status == DetectorStatus(detector=DetectorKind.DUMMY, model_version=DUMMY_MODEL_VERSION)
+    assert detector.status.ready
+
+
+def test_build_detector_reports_the_model_version_of_the_detector_it_loaded() -> None:
+    detector = build_detector(yolo_settings(), lambda model: FakeBackend())
+
+    assert detector.status == DetectorStatus(detector=DetectorKind.YOLO, model_version="yolov8n-coco-v1")
+    assert detector.status.ready
+
+
+@pytest.mark.parametrize("artifact_path", [None, Path("artifacts/missing.pt")])
+def test_build_detector_degrades_when_the_artifact_is_not_usable(artifact_path: Path | None) -> None:
+    def load(_: ModelSettings) -> FakeBackend:
+        raise AssertionError("an artifact that is not there must not be loaded")
+
+    detector = build_detector(yolo_settings(artifact_path), load)
+
+    assert isinstance(detector, UnavailableDetector)
+    assert detector.status.detector is DetectorKind.YOLO
+    assert detector.status.model_version is None
+    assert not detector.status.ready
+    assert "ML_MODEL_PATH" in str(detector.status.reason)
+
+    with pytest.raises(ModelUnavailable, match="ML_MODEL_PATH"):
+        detector.predict(png())
+
+
+def test_build_detector_degrades_when_the_artifact_cannot_be_loaded() -> None:
+    def load(_: ModelSettings) -> FakeBackend:
+        raise RuntimeError("PytorchStreamReader failed locating file data.pkl")
+
+    detector = build_detector(yolo_settings(), load)
+
+    assert isinstance(detector, UnavailableDetector)
+    # The status names the artifact without echoing the model library's traceback.
+    assert Path(__file__).name in str(detector.status.reason)
+    assert "could not be loaded" in str(detector.status.reason)
+    assert "PytorchStreamReader" not in str(detector.status.reason)
+
+    with pytest.raises(ModelUnavailable):
+        detector.predict(png())

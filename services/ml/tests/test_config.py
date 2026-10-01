@@ -64,16 +64,46 @@ def test_an_unknown_detector_names_the_supported_ones() -> None:
     assert "yolo" in str(error.value)
 
 
-@pytest.mark.parametrize("configured", ["", "artifacts/missing.pt"])
-def test_a_model_artifact_that_is_not_there_stops_the_service_from_starting(configured: str) -> None:
-    with pytest.raises(ValueError, match="ML_MODEL_PATH"):
-        Settings.from_environment(environment(ML_MODEL_PATH=configured))
+def test_a_loadable_artifact_has_no_unusable_reason() -> None:
+    settings = Settings.from_environment(environment())
+
+    assert settings.model is not None
+    assert settings.model.unusable_reason() is None
 
 
 @pytest.mark.parametrize("configured", ["", "   "])
-def test_a_detector_loading_an_artifact_requires_an_explicit_model_version(configured: str) -> None:
-    with pytest.raises(ValueError, match="ML_MODEL_VERSION"):
-        Settings.from_environment(environment(ML_MODEL_VERSION=configured))
+def test_a_model_artifact_that_is_not_configured_names_its_setting(configured: str) -> None:
+    # An unset artifact is a deployment the service starts degraded and reports, not a
+    # reason to refuse to start.
+    settings = Settings.from_environment(environment(ML_MODEL_PATH=configured))
+
+    assert settings.model is not None
+    assert settings.model.artifact_path is None
+    assert "ML_MODEL_PATH" in reason_of(settings)
+
+
+def test_a_model_artifact_that_is_not_there_names_the_path() -> None:
+    settings = Settings.from_environment(environment(ML_MODEL_PATH="artifacts/missing.pt"))
+
+    assert "missing.pt" in reason_of(settings)
+
+
+@pytest.mark.parametrize("configured", ["", "   "])
+def test_a_detector_loading_an_artifact_reports_an_unnamed_model_version(configured: str) -> None:
+    settings = Settings.from_environment(environment(ML_MODEL_VERSION=configured))
+
+    assert settings.model is not None
+    assert settings.model.model_version is None
+    assert "ML_MODEL_VERSION" in reason_of(settings)
+
+
+def reason_of(settings: Settings) -> str:
+    """The reason the settings cannot serve predictions; the cases here all have one."""
+    assert settings.model is not None
+    reason = settings.model.unusable_reason()
+    assert reason is not None
+
+    return reason
 
 
 @pytest.mark.parametrize(

@@ -1,5 +1,7 @@
+import logging
 import time
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from io import BytesIO
 from typing import Protocol
 
@@ -12,17 +14,50 @@ from app.preprocessing import letterbox
 MAX_DETECTIONS = 100
 """Laravel rejects a prediction that carries more detections than this."""
 
+DUMMY_MODEL_VERSION = "dummy-v1"
+"""The version the dummy detector stamps on its predictions."""
+
+logger = logging.getLogger(__name__)
+
+
+class ModelUnavailable(RuntimeError):
+    """A prediction was asked of a detector whose model artifact never loaded."""
+
+
+@dataclass(frozen=True)
+class DetectorStatus:
+    """What the running service can say about the detector it is serving.
+
+    `reason` names why the detector cannot predict, or is None when it can. The status is
+    reported on `/health`, which is what makes a deployment discoverable from the running
+    service: its detector, its model version, and its readiness.
+    """
+
+    detector: DetectorKind
+    model_version: str | None
+    reason: str | None = None
+
+    @property
+    def ready(self) -> bool:
+        return self.reason is None
+
 
 class Detector(Protocol):
+    @property
+    def status(self) -> DetectorStatus: ...
+
     def predict(self, image: bytes) -> dict[str, object]: ...
 
 
 class DummyDetector:
     """The contract placeholder used by tests, CI, and deployments without a model artifact."""
 
+    def __init__(self) -> None:
+        self.status = DetectorStatus(detector=DetectorKind.DUMMY, model_version=DUMMY_MODEL_VERSION)
+
     def predict(self, image: bytes) -> dict[str, object]:
         return {
-            "model_version": "dummy-v1",
+            "model_version": DUMMY_MODEL_VERSION,
             "inference_ms": 10,
             "detections": [
                 {
@@ -49,8 +84,8 @@ class YoloDetector:
         max_detections: int = MAX_DETECTIONS,
     ) -> None:
         self._backend = backend
-        self._model_version = model_version
         self._max_detections = max_detections
+        self.status = DetectorStatus(detector=DetectorKind.YOLO, model_version=model_version)
 
     def predict(self, image: bytes) -> dict[str, object]:
         with Image.open(BytesIO(image)) as submitted:
@@ -61,7 +96,8 @@ class YoloDetector:
         inference_ms = round((time.perf_counter() - started_at) * 1000)
 
         return {
-            "model_version": self._model_version,
+            # The version predictions are stamped with is the version the service reports.
+            "model_version": self.status.model_version,
             "inference_ms": inference_ms,
             "detections": [
                 {
@@ -83,11 +119,32 @@ class YoloDetector:
         return ranked[: self._max_detections]
 
 
+class UnavailableDetector:
+    """Stands in for a detector whose model artifact never loaded.
+
+    The service starts anyway: `/health` reports the reason real inference is unavailable,
+    and every prediction answers a controlled error instead of a stack trace or a request
+    left hanging.
+    """
+
+    def __init__(self, detector: DetectorKind, reason: str) -> None:
+        self._reason = reason
+        self.status = DetectorStatus(detector=detector, model_version=None, reason=reason)
+
+    def predict(self, image: bytes) -> dict[str, object]:
+        raise ModelUnavailable(self._reason)
+
+
 def build_detector(
     settings: Settings,
     load_backend: Callable[[ModelSettings], InferenceBackend],
 ) -> Detector:
-    """Builds the configured detector, loading its model artifact once, at startup."""
+    """Builds the configured detector, loading its model artifact once, at startup.
+
+    A model that is missing, unreadable, or unusable does not stop the service: it starts
+    with a detector that reports why it cannot predict and refuses predictions with a
+    controlled error, so a broken deployment stays observable instead of crash-looping.
+    """
     if settings.detector is DetectorKind.DUMMY:
         return DummyDetector()
 
@@ -95,4 +152,25 @@ def build_detector(
     if model is None:
         raise ValueError(f"the {settings.detector.value} detector requires model settings")
 
-    return YoloDetector(backend=load_backend(model), model_version=model.model_version)
+    reason = model.unusable_reason()
+    if reason is not None:
+        logger.warning("serving the %s detector without a model: %s", settings.detector.value, reason)
+
+        return UnavailableDetector(detector=settings.detector, reason=reason)
+
+    try:
+        backend = load_backend(model)
+    except Exception:
+        # A corrupt or unusable artifact surfaces as whatever the model library raises. Log
+        # the traceback for operators; the status deliberately keeps only a short reason.
+        logger.exception("the model artifact at %s could not be loaded", model.artifact_path)
+
+        return UnavailableDetector(
+            detector=settings.detector,
+            reason=f"the model artifact at {model.artifact_path} could not be loaded",
+        )
+
+    detector = YoloDetector(backend=backend, model_version=str(model.model_version))
+    logger.info("serving the %s detector with model version %s", settings.detector.value, model.model_version)
+
+    return detector
