@@ -1,44 +1,18 @@
-from collections.abc import Sequence
-from pathlib import Path
-
 import pytest
 from fastapi.testclient import TestClient
-from PIL import Image
 
 from app.config import ModelSettings, Settings
 from app.detector import DUMMY_MODEL_VERSION
-from app.inference import InferenceBackend, RawDetection
+from app.inference import InferenceBackend
 from app.main import create_app
-
-
-def environment(**overrides: str) -> dict[str, str]:
-    """A YOLO deployment, with the test file itself standing in for the model artifact."""
-    return {
-        "ML_DETECTOR": "yolo",
-        "ML_MODEL_PATH": __file__,
-        "ML_MODEL_VERSION": "yolov8n-coco-v1",
-        **overrides,
-    }
-
-
-class FakeBackend:
-    """A substituted inference backend that needs no model artifact."""
-
-    @property
-    def input_size(self) -> int:
-        return 640
-
-    @property
-    def class_names(self) -> dict[int, str]:
-        return {}
-
-    def infer(self, image: Image.Image) -> Sequence[RawDetection]:
-        return []
+from conftest import ARTIFACT_PATH, FakeBackend, yolo_environment
 
 
 def health(**overrides: str) -> dict[str, str | None]:
     """The health body of a service started with the given deployment environment."""
-    app = create_app(Settings.from_environment(environment(**overrides)), load_backend=lambda model: FakeBackend())
+    settings = Settings.from_environment(yolo_environment(**overrides))
+
+    app = create_app(settings, load_backend=lambda model: FakeBackend())
 
     response = TestClient(app).get("/health")
 
@@ -63,7 +37,7 @@ def test_health_reports_the_dummy_detector_it_serves() -> None:
 
 
 def test_startup_with_a_present_artifact_reports_the_loaded_model_version() -> None:
-    app = create_app(Settings.from_environment(environment()), load_backend=lambda model: FakeBackend())
+    app = create_app(Settings.from_environment(yolo_environment()), load_backend=lambda model: FakeBackend())
 
     response = TestClient(app).get("/health")
 
@@ -91,7 +65,7 @@ def test_startup_with_a_corrupt_artifact_reports_the_degraded_state_while_health
     def load(_: ModelSettings) -> InferenceBackend:
         raise RuntimeError("PytorchStreamReader failed locating file data.pkl")
 
-    app = create_app(Settings.from_environment(environment()), load_backend=load)
+    app = create_app(Settings.from_environment(yolo_environment()), load_backend=load)
 
     response = TestClient(app).get("/health")
 
@@ -100,7 +74,7 @@ def test_startup_with_a_corrupt_artifact_reports_the_degraded_state_while_health
         "status": "degraded",
         "detector": "yolo",
         "model_version": None,
-        "reason": f"the model artifact at {Path(__file__)} could not be loaded",
+        "reason": f"the model artifact at {ARTIFACT_PATH} could not be loaded",
     }
 
 

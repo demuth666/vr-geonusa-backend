@@ -20,10 +20,12 @@ from app.main import create_app
 from app.yolo_backend import load_yolo_backend
 
 LARAVEL_ML_TIMEOUT_SECONDS = 10
-"""Laravel's default ML_SERVICE_TIMEOUT; a prediction has to answer well within it."""
+"""The `ML_SERVICE_TIMEOUT` Laravel reads from apps/api/config/services.php; a prediction
+has to answer within it."""
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
-"""Laravel accepts image uploads up to 5 MB."""
+"""The largest image Laravel forwards to the service, from apps/api's
+CreateMlPredictionRequest (5 MB, no larger than 4096x4096)."""
 
 
 @pytest.fixture(scope="module")

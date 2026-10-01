@@ -1,4 +1,3 @@
-from collections.abc import Sequence
 from io import BytesIO
 
 import pytest
@@ -7,8 +6,9 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from app.config import Settings
-from app.inference import InferenceBackend, RawDetection
+from app.inference import InferenceBackend
 from app.main import create_app
+from conftest import FakeBackend, detection, yolo_environment
 
 
 def png(width: int = 1, height: int = 1) -> bytes:
@@ -30,32 +30,9 @@ def prediction_request(image: tuple[str, bytes, str]) -> dict[str, object]:
     }
 
 
-class FixedBackend:
-    """A substituted inference backend that needs no model artifact."""
-
-    input_size = 640
-    class_names = {7: "stupa"}
-
-    def infer(self, image: Image.Image) -> Sequence[RawDetection]:
-        """A detection covering the submitted image, in the coordinates of a 640 model input."""
-        return [RawDetection(class_index=7, confidence=0.8, box=(0.0, 160.0, 640.0, 480.0))]
-
-
-class EmptyBackend(FixedBackend):
-    """A substituted inference backend whose model finds nothing in the image."""
-
-    def infer(self, image: Image.Image) -> Sequence[RawDetection]:
-        return []
-
-
-def yolo_environment(**overrides: str) -> dict[str, str]:
-    """A YOLO deployment, with the test file itself standing in for the model artifact."""
-    return {
-        "ML_DETECTOR": "yolo",
-        "ML_MODEL_PATH": __file__,
-        "ML_MODEL_VERSION": "yolov8n-coco-v1",
-        **overrides,
-    }
+def finds_a_stupa() -> FakeBackend:
+    """An inference backend whose model finds one class, covering the submitted image."""
+    return FakeBackend([detection(class_index=7, confidence=0.8)], class_names={7: "stupa"})
 
 
 def app_with(backend: InferenceBackend, **overrides: str) -> FastAPI:
@@ -85,7 +62,7 @@ def test_predict_returns_the_dummy_prediction_contract() -> None:
 
 
 def test_predict_serves_a_loaded_model_through_the_unchanged_route() -> None:
-    response = TestClient(app_with(FixedBackend())).post(
+    response = TestClient(app_with(finds_a_stupa())).post(
         "/v1/predict",
         **prediction_request(("viewport.png", png(800, 400), "image/png")),
     )
@@ -105,7 +82,7 @@ def test_predict_serves_a_loaded_model_through_the_unchanged_route() -> None:
 
 
 def test_predict_succeeds_with_no_detections_when_the_model_finds_nothing() -> None:
-    response = TestClient(app_with(EmptyBackend())).post(
+    response = TestClient(app_with(FakeBackend())).post(
         "/v1/predict",
         **prediction_request(("viewport.png", png(800, 400), "image/png")),
     )
@@ -134,7 +111,7 @@ def test_predict_rejects_non_images(image: tuple[str, bytes, str]) -> None:
 
 
 def test_predictions_answer_a_controlled_error_while_the_model_is_unavailable() -> None:
-    app = app_with(FixedBackend(), ML_MODEL_PATH="artifacts/missing.pt")
+    app = app_with(finds_a_stupa(), ML_MODEL_PATH="artifacts/missing.pt")
 
     response = TestClient(app).post(
         "/v1/predict",

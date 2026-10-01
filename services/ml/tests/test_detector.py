@@ -1,10 +1,7 @@
 import sys
-from collections.abc import Sequence
-from io import BytesIO
 from pathlib import Path
 
 import pytest
-from PIL import Image
 
 from app.config import DetectorKind, ModelSettings, Settings
 from app.detector import (
@@ -17,41 +14,10 @@ from app.detector import (
     build_detector,
 )
 from app.inference import RawDetection
+from conftest import ARTIFACT_PATH, FakeBackend, detection, png
 
 
-class FakeBackend:
-    """A substituted inference backend: no model artifact, no inference runtime."""
-
-    def __init__(
-        self,
-        detections: Sequence[RawDetection] = (),
-        class_names: dict[int, str] | None = None,
-        input_size: int = 640,
-    ) -> None:
-        self.class_names = {0: "stupa"} if class_names is None else class_names
-        self.input_size = input_size
-        self._detections = list(detections)
-        self.received: list[Image.Image] = []
-
-    def infer(self, image: Image.Image) -> Sequence[RawDetection]:
-        self.received.append(image)
-
-        return self._detections
-
-
-def png(width: int = 800, height: int = 400) -> bytes:
-    output = BytesIO()
-    Image.new("RGB", (width, height)).save(output, "PNG")
-
-    return output.getvalue()
-
-
-def detection(class_index: int = 0, confidence: float = 0.9) -> RawDetection:
-    """A detection covering the submitted image, in the coordinates of a 640 model input."""
-    return RawDetection(class_index=class_index, confidence=confidence, box=(0.0, 160.0, 640.0, 480.0))
-
-
-def yolo_settings(artifact_path: Path | None = Path(__file__)) -> Settings:
+def yolo_settings(artifact_path: Path | None = ARTIFACT_PATH) -> Settings:
     """A YOLO deployment whose artifact is a file that is there; the load is still faked."""
     return Settings(
         detector=DetectorKind.YOLO,
@@ -249,6 +215,19 @@ def test_build_detector_degrades_when_the_artifact_is_not_usable(artifact_path: 
         detector.predict(png())
 
 
+def test_build_detector_names_a_missing_runtime_rather_than_blaming_the_artifact() -> None:
+    def load(_: ModelSettings) -> FakeBackend:
+        raise ModuleNotFoundError("No module named 'ultralytics'")
+
+    detector = build_detector(yolo_settings(), load)
+
+    assert isinstance(detector, UnavailableDetector)
+    assert "INSTALL_YOLO" in str(detector.status.reason)
+
+    with pytest.raises(ModelUnavailable):
+        detector.predict(png())
+
+
 def test_build_detector_degrades_when_the_artifact_cannot_be_loaded() -> None:
     def load(_: ModelSettings) -> FakeBackend:
         raise RuntimeError("PytorchStreamReader failed locating file data.pkl")
@@ -257,7 +236,7 @@ def test_build_detector_degrades_when_the_artifact_cannot_be_loaded() -> None:
 
     assert isinstance(detector, UnavailableDetector)
     # The status names the artifact without echoing the model library's traceback.
-    assert Path(__file__).name in str(detector.status.reason)
+    assert ARTIFACT_PATH.name in str(detector.status.reason)
     assert "could not be loaded" in str(detector.status.reason)
     assert "PytorchStreamReader" not in str(detector.status.reason)
 

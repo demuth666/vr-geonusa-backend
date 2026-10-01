@@ -114,6 +114,9 @@ services:
     # docker compose --profile artifacts run --rm ml-artifacts
     profiles: ["artifacts"]
     image: curlimages/curl:8.22.0
+    # The artifact lands in the mounted directory, which on Linux hosts belongs to the
+    # developer; the image's own unprivileged user cannot write there.
+    user: "0:0"
     entrypoint: ["/bin/sh", "/fetch-model.sh"]
     volumes:
       - ./artifacts:/artifacts

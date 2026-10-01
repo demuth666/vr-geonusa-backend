@@ -1,18 +1,7 @@
-from pathlib import Path
-
 import pytest
 
 from app.config import DetectorKind, Settings
-
-
-def environment(**overrides: str) -> dict[str, str]:
-    """A YOLO deployment, with the test file itself standing in for the model artifact."""
-    return {
-        "ML_DETECTOR": "yolo",
-        "ML_MODEL_PATH": __file__,
-        "ML_MODEL_VERSION": "yolov8n-coco-v1",
-        **overrides,
-    }
+from conftest import ARTIFACT_PATH, yolo_environment
 
 
 def test_settings_fall_back_to_the_dummy_detector() -> None:
@@ -23,11 +12,11 @@ def test_settings_fall_back_to_the_dummy_detector() -> None:
 
 
 def test_settings_read_the_configured_model_artifact() -> None:
-    settings = Settings.from_environment(environment())
+    settings = Settings.from_environment(yolo_environment())
 
     assert settings.detector is DetectorKind.YOLO
     assert settings.model is not None
-    assert settings.model.artifact_path == Path(__file__)
+    assert settings.model.artifact_path == ARTIFACT_PATH
     assert settings.model.model_version == "yolov8n-coco-v1"
     assert settings.model.input_size == 640
     assert settings.model.confidence_threshold == 0.25
@@ -35,7 +24,7 @@ def test_settings_read_the_configured_model_artifact() -> None:
 
 def test_settings_accept_tuned_detection_values() -> None:
     settings = Settings.from_environment(
-        environment(ML_IMAGE_SIZE="512", ML_CONFIDENCE_THRESHOLD="0.4")
+        yolo_environment(ML_IMAGE_SIZE="512", ML_CONFIDENCE_THRESHOLD="0.4")
     )
 
     assert settings.model is not None
@@ -45,7 +34,7 @@ def test_settings_accept_tuned_detection_values() -> None:
 
 def test_blank_settings_fall_back_to_their_defaults() -> None:
     # Compose passes a variable it was not given as an empty string, which is not a value.
-    settings = Settings.from_environment(environment(ML_IMAGE_SIZE="", ML_CONFIDENCE_THRESHOLD=" "))
+    settings = Settings.from_environment(yolo_environment(ML_IMAGE_SIZE="", ML_CONFIDENCE_THRESHOLD=" "))
 
     assert settings.model is not None
     assert settings.model.input_size == 640
@@ -65,7 +54,7 @@ def test_an_unknown_detector_names_the_supported_ones() -> None:
 
 
 def test_a_loadable_artifact_has_no_unusable_reason() -> None:
-    settings = Settings.from_environment(environment())
+    settings = Settings.from_environment(yolo_environment())
 
     assert settings.model is not None
     assert settings.model.unusable_reason() is None
@@ -75,7 +64,7 @@ def test_a_loadable_artifact_has_no_unusable_reason() -> None:
 def test_a_model_artifact_that_is_not_configured_names_its_setting(configured: str) -> None:
     # An unset artifact is a deployment the service starts degraded and reports, not a
     # reason to refuse to start.
-    settings = Settings.from_environment(environment(ML_MODEL_PATH=configured))
+    settings = Settings.from_environment(yolo_environment(ML_MODEL_PATH=configured))
 
     assert settings.model is not None
     assert settings.model.artifact_path is None
@@ -83,14 +72,14 @@ def test_a_model_artifact_that_is_not_configured_names_its_setting(configured: s
 
 
 def test_a_model_artifact_that_is_not_there_names_the_path() -> None:
-    settings = Settings.from_environment(environment(ML_MODEL_PATH="artifacts/missing.pt"))
+    settings = Settings.from_environment(yolo_environment(ML_MODEL_PATH="artifacts/missing.pt"))
 
     assert "missing.pt" in reason_of(settings)
 
 
 @pytest.mark.parametrize("configured", ["", "   "])
 def test_a_detector_loading_an_artifact_reports_an_unnamed_model_version(configured: str) -> None:
-    settings = Settings.from_environment(environment(ML_MODEL_VERSION=configured))
+    settings = Settings.from_environment(yolo_environment(ML_MODEL_VERSION=configured))
 
     assert settings.model is not None
     assert settings.model.model_version is None
@@ -119,7 +108,7 @@ def reason_of(settings: Settings) -> str:
 )
 def test_invalid_detection_settings_are_rejected(name: str, configured: str) -> None:
     with pytest.raises(ValueError, match=name):
-        Settings.from_environment(environment(**{name: configured}))
+        Settings.from_environment(yolo_environment(**{name: configured}))
 
 
 def test_a_dummy_deployment_needs_no_model_settings_at_all() -> None:

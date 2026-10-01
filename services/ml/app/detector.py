@@ -160,6 +160,15 @@ def build_detector(
 
     try:
         backend = load_backend(model)
+    except ImportError:
+        # The detector is selected but the image never installed its runtime, so the
+        # artifact is not what is wrong and blaming it would send the operator the wrong way.
+        logger.exception("the inference runtime is not installed in this image")
+
+        return UnavailableDetector(
+            detector=settings.detector,
+            reason="the inference runtime is not installed in this image; build it with INSTALL_YOLO=true",
+        )
     except Exception:
         # A corrupt or unusable artifact surfaces as whatever the model library raises. Log
         # the traceback for operators; the status deliberately keeps only a short reason.
@@ -170,7 +179,11 @@ def build_detector(
             reason=f"the model artifact at {model.artifact_path} could not be loaded",
         )
 
-    detector = YoloDetector(backend=backend, model_version=str(model.model_version))
+    # unusable_reason() has already refused a model without a version, so the version the
+    # detector stamps on predictions is a real one.
+    assert model.model_version is not None
+
+    detector = YoloDetector(backend=backend, model_version=model.model_version)
     logger.info("serving the %s detector with model version %s", settings.detector.value, model.model_version)
 
     return detector
