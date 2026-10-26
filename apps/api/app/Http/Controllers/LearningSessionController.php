@@ -72,6 +72,19 @@ class LearningSessionController extends Controller
         return LearningSessionResource::make($session);
     }
 
+    public function result(Request $request, int $id): CompletedSessionResultResource
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $session = LearningSession::query()
+            ->ownedBy($user)
+            ->where('phase', LearningSessionPhase::Completed->value)
+            ->with(['assessmentAttempts.instrument', 'activityEvents', 'quizAttempts'])
+            ->findOrFail($id);
+
+        return CompletedSessionResultResource::make($session);
+    }
+
     public function progress(
         Request $request,
         CalculateExplorationProgress $calculateProgress,
