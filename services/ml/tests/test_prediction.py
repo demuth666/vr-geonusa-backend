@@ -1,21 +1,11 @@
-from io import BytesIO
-
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from PIL import Image
 
 from app.config import Settings
 from app.inference import InferenceBackend
 from app.main import create_app
-from conftest import FakeBackend, detection, yolo_environment
-
-
-def png(width: int = 1, height: int = 1) -> bytes:
-    output = BytesIO()
-    Image.new("RGB", (width, height)).save(output, "PNG")
-
-    return output.getvalue()
+from conftest import FakeBackend, detection, png, yolo_environment
 
 
 def prediction_request(image: tuple[str, bytes, str]) -> dict[str, object]:

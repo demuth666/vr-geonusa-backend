@@ -19,9 +19,10 @@ from app.detector import ModelUnavailable, build_detector
 from app.main import create_app
 from app.yolo_backend import load_yolo_backend
 
-LARAVEL_ML_TIMEOUT_SECONDS = 10
-"""The `ML_SERVICE_TIMEOUT` Laravel reads from apps/api/config/services.php; a prediction
-has to answer within it."""
+LARAVEL_ML_TIMEOUT_SECONDS = float(os.environ.get("ML_SERVICE_TIMEOUT") or 10)
+"""The `ML_SERVICE_TIMEOUT` Laravel reads from apps/api/config/services.php, defaulting to
+the same 10 seconds it does; a prediction has to answer within it. A deployment that
+configures another timeout exports this variable so the budget here follows it."""
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 """The largest image Laravel forwards to the service, from apps/api's

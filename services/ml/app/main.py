@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
 from app.config import DetectorKind, ModelSettings, Settings
-from app.detector import Detector, ModelUnavailable, build_detector
+from app.detector import ModelUnavailable, build_detector
 from app.inference import InferenceBackend
 from app.preprocessing import is_valid_image
 from app.yolo_backend import load_yolo_backend
