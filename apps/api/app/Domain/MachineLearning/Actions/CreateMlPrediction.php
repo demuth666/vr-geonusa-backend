@@ -80,7 +80,7 @@ class CreateMlPrediction
         $validator = Validator::make($response->json() ?? [], [
             'model_version' => ['required', 'string', 'max:255'],
             'inference_ms' => ['required', 'integer', 'between:0,2147483647'],
-            'detections' => ['required', 'array', 'max:100'],
+            'detections' => ['present', 'array', 'max:100'],
             'detections.*.class' => ['required', 'string', 'max:255'],
             'detections.*.confidence' => ['required', 'numeric', 'between:0,1'],
             'detections.*.bounding_box' => ['required', 'array', 'size:4'],
