@@ -122,6 +122,11 @@ prediction over Laravel's largest accepted upload has to answer within
 `ML_SERVICE_TIMEOUT`, and a corrupt artifact has to degrade instead of stopping the
 service. Both tests skip where the runtime or the artifact is absent.
 
+The Laravel integration test also sends a real viewport through the stacked endpoint
+when the ML service reports the stock `yolov8n-coco-v1` detector. It asserts the COCO
+class keys are persisted and returned unresolved, and that the learning session stays
+in exploration. With the dummy detector, or a different model version, it skips.
+
 Stop the services without deleting development data:
 
 ```bash
