@@ -105,6 +105,50 @@ so a deployment without a usable artifact stays observable instead of crash-loop
 The dummy detector remains the supported way to run the stack without an artifact at
 all.
 
+## Dataset preparation
+
+Phase 15 dataset tooling lives in `services/ml/dataset/`. The runtime service never
+imports it, and it never reads an Inference Run image. It validates an external
+YOLO-style export before any split or training work begins. The ML image copies the
+package only so its own `pytest` suite can run; serving a prediction never touches it.
+
+An export is a directory with this shape:
+
+```text
+export/
+  images/                 # annotated crops
+  labels/                 # <crop>.txt, one file per crop
+  panoramas/              # one file per source panorama the export contains
+  classes.txt             # one stable detector class key per line
+  provenance.csv          # crop,source_panorama
+```
+
+- `classes.txt` line order defines the YOLO class index. Keys are detector class keys
+  that Laravel resolves through ML Class Mappings to Heritage Objects; they are not
+  Geometry Shapes.
+- Each label line is an object-level bounding box in normalized YOLO form:
+  `class_index x_center y_center width height`. Empty label files are valid negative
+  samples, but the export as a whole must contain at least one object box.
+- Identical crop pixels under different names are rejected: duplicates are leakage
+  waiting to be split across panoramas.
+- `provenance.csv` must name every crop exactly once and must only name panoramas
+  declared in the `panoramas/` directory. `crop` is the crop filename without its
+  extension; a `source_panorama` is a panorama filename without its extension. Grouping
+  is never inferred from crop filenames or directories. The panorama files themselves
+  are not opened; identity is all the split needs.
+
+Validate an export and write the normalized manifest:
+
+```bash
+cd services/ml
+python -m dataset validate path/to/export --output path/to/dataset-manifest.json
+```
+
+A valid export exits `0` and writes deterministic JSON with the class catalog, panorama
+groups, crops and object boxes, per-class distribution, counts, and a `sha256` input
+digest. An invalid export exits `1`, prints every offending crop or label with the rule
+it broke, and writes no manifest.
+
 ## Verify
 
 ```bash
