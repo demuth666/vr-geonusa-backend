@@ -24,9 +24,6 @@ RUN if [ "$INSTALL_YOLO" = "true" ]; then \
 
 COPY services/ml/app ./app
 COPY services/ml/preprocessing ./preprocessing
-# Dataset preparation is not imported by the service. It is copied so the image's own
-# pytest suite stays runnable, as the README's verification steps expect.
-COPY services/ml/dataset ./dataset
 COPY services/ml/tests ./tests
 COPY services/ml/pytest.ini ./
 
