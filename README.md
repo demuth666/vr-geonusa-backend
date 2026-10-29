@@ -47,24 +47,63 @@ The ML service serves either detector, selected by `ML_DETECTOR`:
 
 - `dummy` (default) answers with a fixed prediction, so tests, CI, and environments
   without a model artifact keep working.
-- `yolo` loads the artifact at `ML_MODEL_PATH` once at startup and serves it on the
-  same `/v1/predict` route and in the same response shape.
+- `yolo` loads the artifact at `ML_MODEL_PATH` once at startup, before the service
+  accepts traffic, and serves it on the same `/v1/predict` route and in the same
+  response shape.
 
-The image carries Ultralytics and PyTorch only when built with `INSTALL_YOLO=true`, so
-serving an artifact starts with one rebuild. After that, replacing the artifact is a
-configuration change only: make the checkpoint reachable inside the container at
-`ML_MODEL_PATH` and name it.
+`/health` reports which detector the running service is serving and whether real
+inference is available, without having to read the service's source:
+
+```json
+{"data": {"status": "ok", "detector": "yolo", "model_version": "yolov8n-coco-v1", "reason": null}}
+```
+
+### Run the real detector from a fresh clone
+
+The model artifact is not committed to the repository. Fetch the pinned release asset
+into `artifacts/`, the directory the ML container mounts read-only, and verify it
+against its checksum:
+
+```bash
+docker compose --profile artifacts run --rm ml-artifacts
+```
+
+Then enable the detector in `.env` — a fresh `.env` already names the artifact the fetch
+installed — and rebuild, because the image carries Ultralytics and PyTorch, a
+multi-gigabyte install, only when asked:
 
 ```bash
 INSTALL_YOLO=true
 ML_DETECTOR=yolo
 ML_MODEL_PATH=/app/artifacts/yolov8n.pt
 ML_MODEL_VERSION=yolov8n-coco-v1
+
+docker compose build ml
+docker compose up -d --wait
 ```
 
 `ML_MODEL_VERSION` is reported on every prediction and recorded by Laravel against the
-inference run, so it must identify the artifact. The service refuses to start on a
-missing artifact, an unnamed model version, or a detector it does not have.
+inference run, so it must identify the artifact. The fetch is reproducible: the URL and
+SHA-256 in `.env` pin the exact bytes, an artifact that is already there is kept, and
+one that does not match the pin is never silently replaced. To serve a different
+checkpoint, put it in `artifacts/` and point `ML_MODEL_PATH` and `ML_MODEL_VERSION` at
+it.
+
+### When the model is missing
+
+An artifact that is missing, unreadable, or corrupt does not stop the service. It still
+starts and serves `/health`, reporting the degraded state and the reason:
+
+```json
+{"data": {"status": "degraded", "detector": "yolo", "model_version": null, "reason": "ML_MODEL_PATH does not point at a file: /app/artifacts/yolov8n.pt"}}
+```
+
+Prediction requests answer `503` with a controlled error, which Laravel records as a
+failed inference run and returns to the client as `502`. Nothing crashes, hangs, or
+answers with a stack trace, and health keeps answering `200` while the process is up,
+so a deployment without a usable artifact stays observable instead of crash-looping.
+The dummy detector remains the supported way to run the stack without an artifact at
+all.
 
 ## Verify
 
@@ -77,6 +116,16 @@ curl --fail http://127.0.0.1:8000/api/v1/health
 curl --fail http://127.0.0.1:8001/health
 curl --fail http://127.0.0.1:9000/minio/health/live
 ```
+
+With the real detector enabled, the ML suite also exercises the artifact itself: a
+prediction over Laravel's largest accepted upload has to answer within
+`ML_SERVICE_TIMEOUT`, and a corrupt artifact has to degrade instead of stopping the
+service. Both tests skip where the runtime or the artifact is absent.
+
+The Laravel integration test also sends a real viewport through the stacked endpoint
+when the ML service reports the stock `yolov8n-coco-v1` detector. It asserts the COCO
+class keys are persisted and returned unresolved, and that the learning session stays
+in exploration. With the dummy detector, or a different model version, it skips.
 
 Stop the services without deleting development data:
 

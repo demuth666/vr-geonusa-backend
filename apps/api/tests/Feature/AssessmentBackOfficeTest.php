@@ -2,13 +2,18 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Heritage\Models\HeritageObject;
+use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Models\StudentProfile;
+use App\Domain\Learning\Actions\ManageLearningExperienceRevision;
+use App\Domain\Learning\Models\Quiz;
 use App\Domain\Research\Models\AssessmentInstrument;
 use App\Domain\Research\Models\ResearchParticipant;
 use App\Domain\Research\Models\ResearchStudy;
 use App\Filament\Resources\AssessmentInstruments\AssessmentInstrumentResource;
 use App\Filament\Resources\AssessmentInstruments\Pages\ManageAssessmentInstruments;
+use Database\Seeders\BorobudurSeeder;
 use Database\Seeders\UserSeeder;
 use Filament\Actions\Testing\TestAction;
 use Filament\Facades\Filament;
@@ -79,6 +84,14 @@ class AssessmentBackOfficeTest extends TestCase
     public function test_filament_authored_pretest_is_used_by_student_api_without_answer_leaks(): void
     {
         $study = ResearchStudy::create(['name' => 'Borobudur Filament Assessment']);
+
+        $this->seed(BorobudurSeeder::class);
+        app(ManageLearningExperienceRevision::class)->createAndPublish(
+            $study->id,
+            [PanoramaNode::query()->firstOrFail()->id],
+            [HeritageObject::query()->sole()->id],
+            [Quiz::query()->sole()->id],
+        );
 
         $this->actingAs($this->createUser(UserRole::SuperAdmin));
 

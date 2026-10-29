@@ -1,20 +1,11 @@
-from collections.abc import Sequence
-from io import BytesIO
-
 import pytest
+from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from PIL import Image
 
-from app.detector import YoloDetector
-from app.inference import RawDetection
-from app.main import app
-
-
-def png(width: int = 1, height: int = 1) -> bytes:
-    output = BytesIO()
-    Image.new("RGB", (width, height)).save(output, "PNG")
-
-    return output.getvalue()
+from app.config import Settings
+from app.inference import InferenceBackend
+from app.main import create_app
+from conftest import FakeBackend, detection, png, yolo_environment
 
 
 def prediction_request(image: tuple[str, bytes, str]) -> dict[str, object]:
@@ -29,25 +20,18 @@ def prediction_request(image: tuple[str, bytes, str]) -> dict[str, object]:
     }
 
 
-class FixedBackend:
-    """A substituted inference backend that needs no model artifact."""
-
-    input_size = 640
-    class_names = {7: "stupa"}
-
-    def infer(self, image: Image.Image) -> Sequence[RawDetection]:
-        """A detection covering the submitted image, in the coordinates of a 640 model input."""
-        return [RawDetection(class_index=7, confidence=0.8, box=(0.0, 160.0, 640.0, 480.0))]
+def finds_a_stupa() -> FakeBackend:
+    """An inference backend whose model finds one class, covering the submitted image."""
+    return FakeBackend([detection(class_index=7, confidence=0.8)], class_names={7: "stupa"})
 
 
-class EmptyBackend(FixedBackend):
-    """A substituted inference backend whose model finds nothing in the image."""
-
-    def infer(self, image: Image.Image) -> Sequence[RawDetection]:
-        return []
+def app_with(backend: InferenceBackend, **overrides: str) -> FastAPI:
+    return create_app(Settings.from_environment(yolo_environment(**overrides)), load_backend=lambda model: backend)
 
 
 def test_predict_returns_the_dummy_prediction_contract() -> None:
+    app = create_app(Settings.from_environment({}))
+
     response = TestClient(app).post(
         "/v1/predict",
         **prediction_request(("viewport.png", png(), "image/png")),
@@ -67,13 +51,8 @@ def test_predict_returns_the_dummy_prediction_contract() -> None:
     }
 
 
-def test_predict_serves_a_loaded_model_through_the_unchanged_route(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "app.main.detector",
-        YoloDetector(backend=FixedBackend(), model_version="yolov8n-coco-v1"),
-    )
-
-    response = TestClient(app).post(
+def test_predict_serves_a_loaded_model_through_the_unchanged_route() -> None:
+    response = TestClient(app_with(finds_a_stupa())).post(
         "/v1/predict",
         **prediction_request(("viewport.png", png(800, 400), "image/png")),
     )
@@ -92,13 +71,8 @@ def test_predict_serves_a_loaded_model_through_the_unchanged_route(monkeypatch: 
     ]
 
 
-def test_predict_succeeds_with_no_detections_when_the_model_finds_nothing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        "app.main.detector",
-        YoloDetector(backend=EmptyBackend(), model_version="yolov8n-coco-v1"),
-    )
-
-    response = TestClient(app).post(
+def test_predict_succeeds_with_no_detections_when_the_model_finds_nothing() -> None:
+    response = TestClient(app_with(FakeBackend())).post(
         "/v1/predict",
         **prediction_request(("viewport.png", png(800, 400), "image/png")),
     )
@@ -115,6 +89,8 @@ def test_predict_succeeds_with_no_detections_when_the_model_finds_nothing(monkey
     ],
 )
 def test_predict_rejects_non_images(image: tuple[str, bytes, str]) -> None:
+    app = create_app(Settings.from_environment({}))
+
     response = TestClient(app).post(
         "/v1/predict",
         **prediction_request(image),
@@ -124,8 +100,22 @@ def test_predict_rejects_non_images(image: tuple[str, bytes, str]) -> None:
     assert response.json() == {"detail": "image must be a valid image file"}
 
 
+def test_predictions_answer_a_controlled_error_while_the_model_is_unavailable() -> None:
+    app = app_with(finds_a_stupa(), ML_MODEL_PATH="artifacts/missing.pt")
+
+    response = TestClient(app).post(
+        "/v1/predict",
+        **prediction_request(("viewport.png", png(), "image/png")),
+    )
+
+    assert response.status_code == 503
+    assert "ML_MODEL_PATH" in response.json()["detail"]
+    # The caller gets a controlled error naming the cause, never a stack trace.
+    assert "Traceback" not in response.text
+
+
 def test_prediction_schema_documents_the_multipart_contract() -> None:
-    schema = TestClient(app).get("/openapi.json").json()
+    schema = TestClient(create_app(Settings.from_environment({}))).get("/openapi.json").json()
     operation = schema["paths"]["/v1/predict"]["post"]
 
     assert "multipart/form-data" in operation["requestBody"]["content"]

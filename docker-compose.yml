@@ -27,7 +27,9 @@ services:
       retries: 10
 
   minio:
-    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    # MinIO stopped publishing its official images to Docker Hub, so the community
+    # builds that track upstream releases are pinned here instead.
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -44,7 +46,7 @@ services:
       retries: 10
 
   minio-init:
-    image: minio/mc:RELEASE.2025-08-13T08-35-41Z
+    image: pgsty/mc:RELEASE.2026-10-25T00-00-00Z
     entrypoint:
       - /bin/sh
       - -c
@@ -107,6 +109,24 @@ services:
       retries: 10
       start_period: 10s
 
+  ml-artifacts:
+    # Fetches the model artifact into ./artifacts, the directory the ml service mounts.
+    # Pinned to a release asset and its checksum, so every clone fetches the same bytes.
+    # It is behind a profile because the default dummy detector needs no artifact:
+    # docker compose --profile artifacts run --rm ml-artifacts
+    profiles: ["artifacts"]
+    image: curlimages/curl:8.22.0
+    # The artifact lands in the mounted directory, which on Linux hosts belongs to the
+    # developer; the image's own unprivileged user cannot write there.
+    user: "0:0"
+    entrypoint: ["/bin/sh", "/fetch-model.sh"]
+    volumes:
+      - ./artifacts:/artifacts
+      - ./infrastructure/scripts/fetch-model.sh:/fetch-model.sh:ro
+    environment:
+      MODEL_URL: ${ML_MODEL_URL:-https://github.com/ultralytics/assets/releases/download/v8.3.0/yolov8n.pt}
+      MODEL_SHA256: ${ML_MODEL_SHA256:-f59b3d833e2ff32e194b5bb8e08d211dc7c5bdf144b90d2c8412c47ccfc83b36}
+
   ml:
     build:
       context: .
@@ -115,10 +135,12 @@ services:
         INSTALL_YOLO: ${INSTALL_YOLO:-false}
     environment:
       ML_DETECTOR: ${ML_DETECTOR:-dummy}
-      ML_MODEL_PATH: ${ML_MODEL_PATH:-}
+      ML_MODEL_PATH: ${ML_MODEL_PATH:-/app/artifacts/yolov8n.pt}
       ML_MODEL_VERSION: ${ML_MODEL_VERSION:-}
       ML_IMAGE_SIZE: ${ML_IMAGE_SIZE:-}
       ML_CONFIDENCE_THRESHOLD: ${ML_CONFIDENCE_THRESHOLD:-}
+    volumes:
+      - ./artifacts:/app/artifacts:ro
     ports:
       - "127.0.0.1:${ML_HOST_PORT}:8001"
     healthcheck:
@@ -126,7 +148,9 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
-      start_period: 5s
+      # Loading the model artifact before the service serves is part of startup, so the
+      # first checks are allowed to fail while the inference runtime initialises.
+      start_period: 30s
 
 volumes:
   postgres_data:

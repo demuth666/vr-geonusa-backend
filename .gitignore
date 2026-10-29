@@ -13,7 +13,8 @@ services/ml/.venv/
 services/ml/**/__pycache__/
 
 datasets/
-artifacts/
+artifacts/*
+!artifacts/.gitkeep
 *.pt
 *.onnx
 

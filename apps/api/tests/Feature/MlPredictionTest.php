@@ -166,6 +166,29 @@ class MlPredictionTest extends TestCase
         Http::assertSent(fn ($request) => $request->url() === 'http://ml.test/v1/predict');
     }
 
+    public function test_a_prediction_with_no_detections_is_a_successful_run(): void
+    {
+        [$user, $session, $writeToken] = $this->createLearningSession('ml-empty', 'a', exploration: true);
+        $node = PanoramaNode::query()->firstOrFail();
+        Http::fake(['ml.test/*' => Http::response([
+            'model_version' => 'dummy-v1',
+            'inference_ms' => 10,
+            'detections' => [],
+        ])]);
+        Sanctum::actingAs($user);
+
+        $this->predict($session->id, $writeToken, $node->id)
+            ->assertCreated()
+            ->assertJsonPath('data.detections', []);
+
+        $this->assertDatabaseHas('ml_inference_runs', [
+            'learning_session_id' => $session->id,
+            'status' => MlInferenceStatus::Succeeded->value,
+        ]);
+        $this->assertDatabaseCount('ml_detections', 0);
+        $this->assertSame(LearningSessionPhase::Exploration, $session->fresh()->phase);
+    }
+
     public function test_ml_service_failures_record_a_failed_inference_run_and_do_not_advance_the_session(): void
     {
         [$user, $session, $writeToken] = $this->createLearningSession('ml-failure', 'a', exploration: true);

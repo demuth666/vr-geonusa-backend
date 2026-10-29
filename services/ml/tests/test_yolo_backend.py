@@ -1,10 +1,13 @@
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import pytest
 from PIL import Image
 
+from app.config import ModelSettings
 from app.inference import RawDetection
-from app.yolo_backend import YoloBackend
+from app.yolo_backend import YoloBackend, load_yolo_backend
 
 
 class FakeYoloModel:
@@ -68,3 +71,18 @@ def test_yolo_backend_reports_no_detections_when_the_model_returns_no_results() 
     model = FakeYoloModel().without_results()
 
     assert backend_for(model).infer(Image.new("RGB", (640, 640))) == []
+
+
+@pytest.mark.parametrize("artifact_path", [None, Path("artifacts/missing.pt")])
+def test_loading_refuses_an_artifact_that_is_not_there(artifact_path: Path | None) -> None:
+    # Ultralytics downloads a checkpoint that is not on disk, so the refusal has to happen
+    # before the model library is handed the path.
+    settings = ModelSettings(
+        artifact_path=artifact_path,
+        model_version="yolov8n-coco-v1",
+        input_size=640,
+        confidence_threshold=0.25,
+    )
+
+    with pytest.raises(FileNotFoundError, match="not there"):
+        load_yolo_backend(settings)

@@ -14,23 +14,45 @@ class DetectorKind(StrEnum):
 
 @dataclass(frozen=True)
 class ModelSettings:
-    """Everything needed to load one model artifact and run inference with it."""
+    """Everything needed to load one model artifact and run inference with it.
 
-    artifact_path: Path
-    model_version: str
+    The artifact path and the model version may be missing: the service then starts in a
+    degraded state that reports what is missing, instead of refusing to start at all.
+    """
+
+    artifact_path: Path | None
+    model_version: str | None
     input_size: int
     confidence_threshold: float
 
     @classmethod
     def from_environment(cls, environment: Mapping[str, str]) -> "ModelSettings":
+        artifact_path = _configured(environment, "ML_MODEL_PATH")
+
         return cls(
-            artifact_path=_artifact_path(_configured(environment, "ML_MODEL_PATH")),
-            model_version=_model_version(_configured(environment, "ML_MODEL_VERSION")),
+            artifact_path=Path(artifact_path) if artifact_path else None,
+            model_version=_configured(environment, "ML_MODEL_VERSION"),
             input_size=_positive_int("ML_IMAGE_SIZE", _configured(environment, "ML_IMAGE_SIZE"), 640),
             confidence_threshold=_probability(
                 "ML_CONFIDENCE_THRESHOLD", _configured(environment, "ML_CONFIDENCE_THRESHOLD"), 0.25
             ),
         )
+
+    def unusable_reason(self) -> str | None:
+        """Why this model cannot serve predictions, or None when the artifact looks loadable."""
+        if self.artifact_path is None:
+            return "ML_MODEL_PATH is not set"
+
+        # The artifact is loaded from disk at startup. A path that is not there is named
+        # here, so the model library is never handed a missing checkpoint to fetch over
+        # the network instead.
+        if not self.artifact_path.is_file():
+            return f"ML_MODEL_PATH does not point at a file: {self.artifact_path}"
+
+        if self.model_version is None:
+            return "ML_MODEL_VERSION is not set, so predictions would not be attributable"
+
+        return None
 
 
 @dataclass(frozen=True)
@@ -68,27 +90,6 @@ def _detector(configured: str) -> DetectorKind:
     except ValueError as error:
         supported = ", ".join(kind.value for kind in DetectorKind)
         raise ValueError(f"ML_DETECTOR must be one of {supported}, got {configured!r}") from error
-
-
-def _artifact_path(configured: str | None) -> Path:
-    if not configured:
-        raise ValueError("ML_MODEL_PATH must point at the model artifact the configured detector loads")
-
-    path = Path(configured)
-
-    # The artifact is loaded from disk at startup. Refuse to start on a path that is not
-    # there, instead of letting a model library fetch a pretrained checkpoint instead.
-    if not path.is_file():
-        raise ValueError(f"ML_MODEL_PATH does not point at a file: {configured}")
-
-    return path
-
-
-def _model_version(configured: str | None) -> str:
-    if not configured:
-        raise ValueError("ML_MODEL_VERSION must name the model artifact, so predictions stay attributable")
-
-    return configured
 
 
 def _positive_int(name: str, configured: str | None, default: int) -> int:

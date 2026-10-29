@@ -12,6 +12,7 @@ from PIL import Image
 
 from app.config import ModelSettings
 from app.inference import RawDetection
+from preprocessing import PADDING
 
 
 class YoloModel(Protocol):
@@ -60,13 +61,26 @@ class YoloBackend:
 
 def load_yolo_backend(settings: ModelSettings) -> YoloBackend:
     """Loads the configured artifact. Called once, when the service starts."""
+    # Ultralytics downloads a checkpoint that is not on disk; an artifact the deployment
+    # never provided must fail here instead of reaching for the network at startup. The
+    # check runs before the import so a missing artifact is reported without the runtime.
+    if settings.artifact_path is None or not settings.artifact_path.is_file():
+        raise FileNotFoundError(f"the model artifact is not there: {settings.artifact_path}")
+
     from ultralytics import YOLO
 
-    return YoloBackend(
+    backend = YoloBackend(
         model=YOLO(str(settings.artifact_path)),
         input_size=settings.input_size,
         confidence_threshold=settings.confidence_threshold,
     )
+
+    # The model's first inference pays for lazily initialised kernels and thread pools,
+    # which is seconds a prediction request would otherwise spend against the timeout the
+    # caller configured. Doing it here moves that cost into startup.
+    backend.infer(Image.new("RGB", (settings.input_size, settings.input_size), PADDING))
+
+    return backend
 
 
 def _xyxy(box: Any) -> tuple[float, float, float, float]:
