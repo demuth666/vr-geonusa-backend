@@ -23,6 +23,7 @@ RUN if [ "$INSTALL_YOLO" = "true" ]; then \
     fi
 
 COPY services/ml/app ./app
+COPY services/ml/preprocessing ./preprocessing
 COPY services/ml/tests ./tests
 COPY services/ml/pytest.ini ./
 

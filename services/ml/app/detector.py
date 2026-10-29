@@ -9,7 +9,7 @@ from PIL import Image
 
 from app.config import DetectorKind, ModelSettings, Settings
 from app.inference import InferenceBackend, RawDetection
-from app.preprocessing import letterbox
+from preprocessing import letterbox
 
 MAX_DETECTIONS = 100
 """Laravel rejects a prediction that carries more detections than this."""

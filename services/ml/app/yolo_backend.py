@@ -12,7 +12,7 @@ from PIL import Image
 
 from app.config import ModelSettings
 from app.inference import RawDetection
-from app.preprocessing import PADDING
+from preprocessing import PADDING
 
 
 class YoloModel(Protocol):
