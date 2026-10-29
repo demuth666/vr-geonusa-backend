@@ -1,6 +1,6 @@
 from PIL import Image
 
-from app.preprocessing import is_valid_image, letterbox
+from preprocessing import is_valid_image, letterbox
 
 
 def image(width: int, height: int) -> Image.Image:
