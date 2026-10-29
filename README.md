@@ -149,6 +149,44 @@ groups, crops and object boxes, per-class distribution, counts, and a `sha256` i
 digest. An invalid export exits `1`, prints every offending crop or label with the rule
 it broke, and writes no manifest.
 
+Split a validated export by source panorama:
+
+```bash
+python -m dataset split path/to/export \
+  --manifest path/to/dataset-manifest.json
+```
+
+The split revalidates the export and refuses a manifest whose digest no longer matches,
+so a dataset is never materialized from changed inputs. It writes:
+
+```text
+datasets/borobudur/
+  images/{train,val,test}/
+  labels/{train,val,test}/
+  data.yaml
+  split-manifest.json
+```
+
+`datasets/` is git-ignored, so binary data never enters the source tree or the container
+image. The default output is `datasets/borobudur`; pass `--name <name>` to write
+`datasets/<name>` instead, or `--output <dir>` for an explicit location. A non-empty
+output directory is refused unless `--force` is given, and the command refuses to write
+inside or over the export.
+
+Whole panoramas are allocated, never individual crops, so no panorama can appear in more
+than one split. Allocation is seeded (`--seed`, default `42`); the same manifest and seed
+produce the same membership, and the seed orders candidates and breaks ties between
+equally close allocations, so a different seed can produce a different valid split.
+Target ratios are configurable with `--ratios TRAIN VAL TEST` (default `0.7 0.2 0.1`) and
+must sum to `1`. Whole panorama groups are allocated by image count, so realized ratios
+can deviate where grouping forces it; all three splits are filled when the export has at
+least three source panoramas.
+
+Images and labels are copied byte-for-byte; annotations are never rewritten. `data.yaml`
+uses the class catalog as Ultralytics `names` and points at the materialized directory.
+`split-manifest.json` records the seed, ratios, dataset digest, each split's panorama
+groups, images, counts, per-class distribution, and a digest of the split itself.
+
 ## Verify
 
 ```bash
