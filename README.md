@@ -107,10 +107,11 @@ all.
 
 ## Dataset preparation
 
-Phase 15 dataset tooling lives in `services/ml/dataset/`. The runtime service never
-imports it, and it never reads an Inference Run image. It validates an external
+Phase 15 dataset tooling lives in `services/ml/dataset/`, and model training lives in
+`services/ml/training/`. The runtime service never imports either, and neither reads an
+Inference Run image or touches PostgreSQL. The dataset tooling validates an external
 YOLO-style export before any split or training work begins. The ML image copies the
-package only so its own `pytest` suite can run; serving a prediction never touches it.
+packages only so its own `pytest` suite can run; serving a prediction never touches them.
 
 An export is a directory with this shape:
 
@@ -185,7 +186,44 @@ least three source panoramas.
 Images and labels are copied byte-for-byte; annotations are never rewritten. `data.yaml`
 uses the class catalog as Ultralytics `names` and points at the materialized directory.
 `split-manifest.json` records the seed, ratios, dataset digest, each split's panorama
-groups, images, counts, per-class distribution, and a digest of the split itself.
+groups, images, counts, per-class distribution, a digest of the split itself, and a
+content digest of the copied image and label bytes.
+
+## Training
+
+Train a versioned detector from a materialized dataset, outside the runtime API:
+
+```bash
+cd services/ml
+python -m training --dataset ../../datasets/borobudur \
+  --model-version borobudur-detector-v1
+```
+
+This needs the opt-in Ultralytics runtime (`requirements-yolo.txt`) and the base
+checkpoint (`artifacts/yolov8n.pt` by default, or `--base-checkpoint`). Before training
+starts, the command verifies the split manifest, re-derives its digest, re-hashes the
+materialized images and labels against the recorded content digest, refuses any source
+panorama that spans splits, and checks that `data.yaml` still describes this dataset and
+class catalog. `--epochs` (default `50`), `--seed` (default `42`), and `--image-size`
+(default `640`) pin the run.
+
+The command requires an explicit `--model-version` and writes into the ignored
+`artifacts/` area:
+
+```text
+artifacts/<model-version>/
+  best.pt
+  run-record.json
+```
+
+A version that already has an artifact is refused unless `--force` is given. The run
+record names the model version, base checkpoint and its checksum, seed, epochs, image
+size, split seed and ratios, dataset, content and split digests, class catalog, and the
+artifact path.
+
+The real-training test skips unless both the Ultralytics runtime and the base checkpoint
+are installed, and the orchestration tests substitute a trainer, so `pytest` runs without
+either.
 
 ## Verify
 

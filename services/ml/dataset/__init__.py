@@ -22,8 +22,10 @@ from dataset.split import (
     SplitError,
     SplitManifest,
     SplitSummary,
+    dataset_content_digest,
     default_output,
     split_dataset,
+    split_digest,
 )
 from dataset.validation import (
     DatasetValidationError,
@@ -46,9 +48,11 @@ __all__ = [
     "SplitManifest",
     "SplitSummary",
     "ValidationIssue",
+    "dataset_content_digest",
     "default_output",
     "prepare_export",
     "read_manifest",
     "split_dataset",
+    "split_digest",
     "write_manifest",
 ]

@@ -10,15 +10,16 @@ import json
 import math
 import shutil
 import tempfile
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from dataset.hashing import feed
+from dataset.hashing import feed, file_digest
 from dataset.manifest import Crop, DatasetManifest, write_json
 from dataset.validation import prepare_export
+from repository import repository_root
 
-SPLIT_SCHEMA_VERSION = 1
+SPLIT_SCHEMA_VERSION = 2
 """Version of the split manifest document written by `dataset.split_dataset`."""
 
 SPLITS = ("train", "val", "test")
@@ -60,6 +61,9 @@ class SplitManifest:
 
     schema_version: int
     dataset_digest: str
+    """Digest of the export inputs, as recorded by the dataset manifest."""
+    content_digest: str
+    """Digest of the copied image and label bytes, split by split."""
     class_catalog: tuple[str, ...]
     seed: int
     ratios: dict[str, float]
@@ -72,6 +76,7 @@ class SplitManifest:
         return {
             "schema_version": self.schema_version,
             "dataset_digest": self.dataset_digest,
+            "content_digest": self.content_digest,
             "class_catalog": list(self.class_catalog),
             "seed": self.seed,
             "ratios": dict(self.ratios),
@@ -97,7 +102,7 @@ def default_output(name: str = DEFAULT_DATASET_NAME) -> Path:
             f"dataset name must be a single directory name, got {name!r}"
         )
 
-    return _repository_root() / "datasets" / name
+    return repository_root() / "datasets" / name
 
 
 def split_dataset(
@@ -147,37 +152,37 @@ def split_dataset(
         for key, value in summary.class_distribution.items():
             distribution[key] += value
 
+    content_digest = dataset_content_digest(
+        {
+            split: {
+                name: (
+                    export / crops_by_name[name].image,
+                    export / crops_by_name[name].label,
+                )
+                for name in splits[split].images
+            }
+            for split in SPLITS
+        }
+    )
+
     split_manifest = SplitManifest(
         schema_version=SPLIT_SCHEMA_VERSION,
         dataset_digest=manifest.digest,
+        content_digest=content_digest,
         class_catalog=manifest.class_catalog,
         seed=seed,
         ratios=resolved_ratios,
         splits=splits,
         counts=counts,
         class_distribution=distribution,
-        digest=_digest(manifest, seed, resolved_ratios, assignment),
+        digest=split_digest(
+            manifest.digest, seed, resolved_ratios, splits, content_digest
+        ),
     )
 
     _materialize(manifest, export, output, assignment, split_manifest, crops_by_name)
 
     return split_manifest
-
-
-def _repository_root() -> Path:
-    package = Path(__file__).resolve().parent
-
-    for candidate in (package, *package.parents):
-        if (candidate / ".git").exists():
-            return candidate
-
-    # The checkout layout puts this package at services/ml/dataset. Shallow layouts
-    # (for instance a container's /app/dataset) have no such ancestor, so fall back to
-    # the package's parent instead of a filesystem root.
-    if len(package.parents) >= 3 and (package.parents[2] / "services").is_dir():
-        return package.parents[2]
-
-    return package.parent
 
 
 def _validate_ratios(values: Sequence[float]) -> dict[str, float]:
@@ -396,25 +401,61 @@ def _summary(
     )
 
 
-def _digest(
-    manifest: DatasetManifest,
+def split_digest(
+    dataset_digest: str,
     seed: int,
-    ratios: dict[str, float],
-    assignment: dict[str, tuple[str, ...]],
+    ratios: Mapping[str, float],
+    splits: Mapping[str, SplitSummary],
+    content_digest: str,
 ) -> str:
+    """The digest a split manifest records for its inputs and its result.
+
+    It covers only what the split manifest itself records, so a later stage such as
+    training can recompute it without the export the split was materialized from.
+    """
     digest = hashlib.sha256()
     feed(digest, "schema_version", str(SPLIT_SCHEMA_VERSION))
-    feed(digest, "dataset_digest", manifest.digest)
+    feed(digest, "dataset_digest", dataset_digest)
+    feed(digest, "content_digest", content_digest)
     feed(digest, "seed", str(seed))
 
     for split in SPLITS:
         feed(digest, "ratio", f"{split}={ratios[split]!r}")
-        for panorama in assignment[split]:
+        for panorama in splits[split].panoramas:
             feed(digest, "panorama", panorama)
-            for crop in manifest.panoramas[panorama]:
-                feed(digest, "crop", crop)
+        for image in splits[split].images:
+            feed(digest, "crop", image)
 
     return f"sha256:{digest.hexdigest()}"
+
+
+def dataset_content_digest(
+    files: Mapping[str, Mapping[str, tuple[Path, Path]]],
+) -> str:
+    """Digest of the materialized dataset: every crop's image and label bytes.
+
+    `files` maps each split to its crops and each crop to its image and label path, so
+    the split stage and the training stage hash exactly the same pieces.
+    """
+    digest = hashlib.sha256()
+    feed(digest, "schema_version", str(SPLIT_SCHEMA_VERSION))
+
+    for split in SPLITS:
+        for name in sorted(files[split]):
+            image, label = files[split][name]
+            feed(digest, "split", split)
+            feed(digest, "crop", name)
+            feed(digest, "image", _file_digest(image))
+            feed(digest, "label", _file_digest(label))
+
+    return f"sha256:{digest.hexdigest()}"
+
+
+def _file_digest(path: Path) -> str:
+    try:
+        return file_digest(path)
+    except OSError as error:
+        raise SplitError(f"crop file '{path}' cannot be read: {error}") from error
 
 
 def _check_output(output: Path, export: Path, *, force: bool) -> None:

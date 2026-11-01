@@ -8,14 +8,16 @@ from pathlib import Path
 import pytest
 from PIL import Image
 
-import dataset.split as split_module
+import repository as repository_module
 from dataset import (
     DatasetManifestError,
+    SPLIT_SCHEMA_VERSION,
     SplitError,
     default_output,
     prepare_export,
     read_manifest,
     split_dataset,
+    split_digest,
     write_manifest,
 )
 
@@ -234,8 +236,10 @@ def test_the_split_manifest_records_the_inputs_and_the_result(
 
     payload = json.loads((output / "split-manifest.json").read_text(encoding="utf-8"))
     assert payload == result.to_dict()
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == SPLIT_SCHEMA_VERSION
     assert payload["dataset_digest"] == manifest.digest
+    assert payload["content_digest"] == result.content_digest
+    assert payload["content_digest"].startswith("sha256:")
     assert payload["seed"] == 7
     assert payload["ratios"] == {"train": 0.6, "val": 0.2, "test": 0.2}
 
@@ -259,6 +263,25 @@ def test_the_split_manifest_records_the_inputs_and_the_result(
     }
     assert payload["class_distribution"] == manifest.class_distribution
     assert payload["digest"].startswith("sha256:")
+
+
+def test_the_split_digest_is_reproducible_from_the_manifest_alone(
+    tmp_path: Path,
+) -> None:
+    export, manifest, _ = export_and_manifest(tmp_path)
+
+    result = split_dataset(manifest, export, tmp_path / "dataset", seed=3)
+
+    assert (
+        split_digest(
+            result.dataset_digest,
+            result.seed,
+            result.ratios,
+            result.splits,
+            result.content_digest,
+        )
+        == result.digest
+    )
 
 
 def test_data_yaml_points_at_the_materialized_dataset(tmp_path: Path) -> None:
@@ -489,12 +512,10 @@ def test_the_default_output_lives_in_the_ignored_datasets_area() -> None:
         default_output("../outside")
 
 
-def test_a_shallow_layout_falls_back_to_the_package_parent(
+def test_a_shallow_layout_falls_back_to_the_module_directory(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    package = tmp_path / "app" / "dataset"
-    monkeypatch.setattr(split_module, "__file__", str(package / "split.py"))
+    package = tmp_path / "app"
+    monkeypatch.setattr(repository_module, "__file__", str(package / "repository.py"))
 
-    assert split_module.default_output("borobudur") == (
-        tmp_path / "app" / "datasets" / "borobudur"
-    )
+    assert repository_module.repository_root() == package
