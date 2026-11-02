@@ -107,10 +107,11 @@ all.
 
 ## Dataset preparation
 
-Phase 15 dataset tooling lives in `services/ml/dataset/`. The runtime service never
-imports it, and it never reads an Inference Run image. It validates an external
+Phase 15 dataset tooling lives in `services/ml/dataset/`, and model training lives in
+`services/ml/training/`. The runtime service never imports either, and neither reads an
+Inference Run image or touches PostgreSQL. The dataset tooling validates an external
 YOLO-style export before any split or training work begins. The ML image copies the
-package only so its own `pytest` suite can run; serving a prediction never touches it.
+packages only so its own `pytest` suite can run; serving a prediction never touches them.
 
 An export is a directory with this shape:
 
@@ -148,6 +149,81 @@ A valid export exits `0` and writes deterministic JSON with the class catalog, p
 groups, crops and object boxes, per-class distribution, counts, and a `sha256` input
 digest. An invalid export exits `1`, prints every offending crop or label with the rule
 it broke, and writes no manifest.
+
+Split a validated export by source panorama:
+
+```bash
+python -m dataset split path/to/export \
+  --manifest path/to/dataset-manifest.json
+```
+
+The split revalidates the export and refuses a manifest whose digest no longer matches,
+so a dataset is never materialized from changed inputs. It writes:
+
+```text
+datasets/borobudur/
+  images/{train,val,test}/
+  labels/{train,val,test}/
+  data.yaml
+  split-manifest.json
+```
+
+`datasets/` is git-ignored, so binary data never enters the source tree or the container
+image. The default output is `datasets/borobudur`; pass `--name <name>` to write
+`datasets/<name>` instead, or `--output <dir>` for an explicit location. A non-empty
+output directory is refused unless `--force` is given, and the command refuses to write
+inside or over the export.
+
+Whole panoramas are allocated, never individual crops, so no panorama can appear in more
+than one split. Allocation is seeded (`--seed`, default `42`); the same manifest and seed
+produce the same membership, and the seed orders candidates and breaks ties between
+equally close allocations, so a different seed can produce a different valid split.
+Target ratios are configurable with `--ratios TRAIN VAL TEST` (default `0.7 0.2 0.1`) and
+must sum to `1`. Whole panorama groups are allocated by image count, so realized ratios
+can deviate where grouping forces it; all three splits are filled when the export has at
+least three source panoramas.
+
+Images and labels are copied byte-for-byte; annotations are never rewritten. `data.yaml`
+uses the class catalog as Ultralytics `names` and points at the materialized directory.
+`split-manifest.json` records the seed, ratios, dataset digest, each split's panorama
+groups, images, counts, per-class distribution, a digest of the split itself, and a
+content digest of the copied image and label bytes.
+
+## Training
+
+Train a versioned detector from a materialized dataset, outside the runtime API:
+
+```bash
+cd services/ml
+python -m training --dataset ../../datasets/borobudur \
+  --model-version borobudur-detector-v1
+```
+
+This needs the opt-in Ultralytics runtime (`requirements-yolo.txt`) and the base
+checkpoint (`artifacts/yolov8n.pt` by default, or `--base-checkpoint`). Before training
+starts, the command verifies the split manifest, re-derives its digest, re-hashes the
+materialized images and labels against the recorded content digest, refuses any source
+panorama that spans splits, and checks that `data.yaml` still describes this dataset and
+class catalog. `--epochs` (default `50`), `--seed` (default `42`), and `--image-size`
+(default `640`) pin the run.
+
+The command requires an explicit `--model-version` and writes into the ignored
+`artifacts/` area:
+
+```text
+artifacts/<model-version>/
+  best.pt
+  run-record.json
+```
+
+A version that already has an artifact is refused unless `--force` is given. The run
+record names the model version, base checkpoint and its checksum, seed, epochs, image
+size, split seed and ratios, dataset, content and split digests, class catalog, and the
+artifact path.
+
+The real-training test skips unless both the Ultralytics runtime and the base checkpoint
+are installed, and the orchestration tests substitute a trainer, so `pytest` runs without
+either.
 
 ## Verify
 
