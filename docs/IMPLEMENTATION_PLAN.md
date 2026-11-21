@@ -144,7 +144,7 @@ GET  /api/v1/me
 
 ## Goal
 
-Frontend team can build landing and Borobudur pages entirely from API data.
+Frontend team can build landing and Borobudur pages entirely from API data
 
 ## Implement
 
