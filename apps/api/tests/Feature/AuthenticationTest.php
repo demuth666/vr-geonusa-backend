@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Domain\Identity\Enums\UserRole;
 use App\Domain\Identity\Models\StudentProfile;
 use App\Domain\Identity\Models\User;
+use App\Domain\Research\Models\ResearchParticipant;
+use App\Domain\Research\Models\ResearchStudy;
 use App\Domain\School\Models\Classroom;
 use App\Domain\School\Models\ClassroomMember;
 use App\Domain\School\Models\School;
@@ -32,6 +34,7 @@ class AuthenticationTest extends TestCase
             ->assertJsonPath('data.user.student_profile.student_number', 'VII-001')
             ->assertJsonPath('data.user.student_profile.school.name', 'SMP GeoNusa')
             ->assertJsonPath('data.user.student_profile.classrooms.0.name', 'Kelas VII A')
+            ->assertJsonPath('data.user.respondent_code', null)
             ->assertJsonStructure(['data' => ['token']])
             ->assertJsonMissingPath('data.user.password');
 
@@ -41,6 +44,23 @@ class AuthenticationTest extends TestCase
             ->assertJsonPath('data.id', $user->id);
 
         $this->assertDatabaseCount('personal_access_tokens', 1);
+    }
+
+    public function test_authenticated_student_receives_their_respondent_code(): void
+    {
+        $user = $this->createStudent();
+        $study = ResearchStudy::create(['name' => 'Borobudur Authentication Study']);
+        $participant = ResearchParticipant::create([
+            'research_study_id' => $study->id,
+            'student_profile_id' => $user->studentProfile->id,
+        ]);
+
+        $token = $user->createToken('test')->plainTextToken;
+
+        $this->withToken($token)
+            ->getJson('/api/v1/me')
+            ->assertOk()
+            ->assertJsonPath('data.respondent_code', $participant->respondent_code);
     }
 
     public function test_invalid_credentials_are_rejected(): void

@@ -43,7 +43,7 @@ def test_predict_returns_the_dummy_prediction_contract() -> None:
         "inference_ms": 10,
         "detections": [
             {
-                "class": "stupa",
+                "class": "setengah_bola",
                 "confidence": 0.95,
                 "bounding_box": [10, 20, 100, 120],
             }

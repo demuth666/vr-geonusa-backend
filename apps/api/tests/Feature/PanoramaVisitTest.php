@@ -95,12 +95,16 @@ class PanoramaVisitTest extends TestCase
             ->assertJsonPath('data.panorama_node.id', $east->id)
             ->assertJsonStructure(['data' => ['id', 'visited_at']]);
 
-        $this->getJson('/api/v1/me/learning-sessions/active')
+        $resumed = $this->getJson('/api/v1/me/learning-sessions/active')
             ->assertOk()
             ->assertJsonPath('data.current_panorama_node.id', $east->id)
             ->assertJsonPath('data.current_panorama_node.slug', 'pelataran-timur');
 
-        $this->recordVisit($session, $stupa, $writeToken)
+        // Resuming rotates the write token; the previous one is now invalid.
+        $resumedToken = $resumed->json('data.write_token');
+        $this->assertNotSame($writeToken, $resumedToken);
+
+        $this->recordVisit($session, $stupa, $resumedToken)
             ->assertCreated()
             ->assertJsonPath('data.panorama_node.id', $stupa->id);
 

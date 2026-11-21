@@ -13,10 +13,10 @@ from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Protocol
 
 from PIL import Image, UnidentifiedImageError
 
+from dataset.hashing import feed
 from dataset.manifest import (
     SCHEMA_VERSION,
     BoundingBox,
@@ -52,10 +52,6 @@ class DatasetValidationError(ValueError):
     def __init__(self, issues: Iterable[ValidationIssue]) -> None:
         self.issues = tuple(issues)
         super().__init__("\n".join(str(issue) for issue in self.issues))
-
-
-class _Hash(Protocol):
-    def update(self, data: bytes) -> None: ...
 
 
 @dataclass(frozen=True)
@@ -277,7 +273,7 @@ def _read_panoramas(
 
     digest = hashlib.sha256()
     for panorama_id in sorted(panorama_ids):
-        _feed(digest, "panorama", panorama_id)
+        feed(digest, "panorama", panorama_id)
 
     return frozenset(panorama_ids), digest.hexdigest()
 
@@ -800,26 +796,20 @@ def _digest(
     label_hashes: Mapping[str, str],
 ) -> str:
     digest = hashlib.sha256()
-    _feed(digest, "schema_version", str(SCHEMA_VERSION))
-    _feed(digest, "class_catalog", catalog_digest)
-    _feed(digest, "provenance", provenance_digest)
-    _feed(digest, "panoramas", panorama_digest)
+    feed(digest, "schema_version", str(SCHEMA_VERSION))
+    feed(digest, "class_catalog", catalog_digest)
+    feed(digest, "provenance", provenance_digest)
+    feed(digest, "panoramas", panorama_digest)
 
     for crop in crops:
-        _feed(digest, "crop", crop.name)
-        _feed(digest, "image_path", crop.image)
-        _feed(digest, "image", image_hashes.get(crop.name, ""))
-        _feed(digest, "label_path", crop.label)
-        _feed(digest, "label", label_hashes.get(crop.name, ""))
-        _feed(digest, "source_panorama", crop.source_panorama)
+        feed(digest, "crop", crop.name)
+        feed(digest, "image_path", crop.image)
+        feed(digest, "image", image_hashes.get(crop.name, ""))
+        feed(digest, "label_path", crop.label)
+        feed(digest, "label", label_hashes.get(crop.name, ""))
+        feed(digest, "source_panorama", crop.source_panorama)
 
     return f"sha256:{digest.hexdigest()}"
-
-
-def _feed(digest: _Hash, label: str, value: str) -> None:
-    encoded = value.encode("utf-8")
-    digest.update(f"{label} {len(encoded)}\n".encode("ascii"))
-    digest.update(encoded)
 
 
 def _hash_bytes(data: bytes) -> str:

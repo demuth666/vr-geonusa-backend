@@ -15,8 +15,8 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
-use Throwable;
 use Tests\TestCase;
+use Throwable;
 
 /**
  * Exercises the composed stack rather than a faked ML service: a prediction travels
@@ -114,7 +114,7 @@ class MlServiceIntegrationTest extends TestCase
                     'inference_ms',
                     'total_latency_ms',
                     'detections' => [
-                        ['class', 'confidence', 'bounding_box', 'heritage_object', 'geometry_mappings'],
+                        ['class', 'confidence', 'bounding_box', 'geometry_shape', 'heritage_mappings'],
                     ],
                 ],
             ]);
@@ -128,8 +128,8 @@ class MlServiceIntegrationTest extends TestCase
             $this->assertGreaterThan(0, $detection['confidence']);
             $this->assertLessThanOrEqual(1, $detection['confidence']);
             $this->assertCount(4, $detection['bounding_box']);
-            $this->assertSame([], $detection['geometry_mappings']);
-            $this->assertNull($detection['heritage_object']);
+            $this->assertSame([], $detection['heritage_mappings']);
+            $this->assertNull($detection['geometry_shape']);
         }
 
         $run = MlInferenceRun::query()->with(['modelVersion', 'detections'])->sole();
@@ -157,7 +157,7 @@ class MlServiceIntegrationTest extends TestCase
         );
 
         // The stock detector's COCO keys have no authored mapping for this version, so they
-        // stay recorded and unresolved rather than being attached to unrelated heritage.
+        // stay recorded and unresolved rather than being attached to unrelated content.
         $this->assertSame(0, $run->modelVersion->classMappings()->count());
 
         $after = $session->fresh();

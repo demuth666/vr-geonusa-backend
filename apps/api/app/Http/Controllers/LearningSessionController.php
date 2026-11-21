@@ -48,10 +48,20 @@ class LearningSessionController extends Controller
             ->with(['researchParticipant', 'currentPanoramaNode'])
             ->first();
 
+        if (! $session) {
+            return response()->json(['data' => null]);
+        }
+
+        // The plaintext token is only ever held by the client. Resuming the
+        // session on an authenticated request rotates it so a refreshed tab
+        // can continue mutating without persisting the previous token.
+        $writeToken = $session->reissueWriteToken();
+
         return response()->json([
-            'data' => $session
-                ? LearningSessionResource::make($session)->resolve($request)
-                : null,
+            'data' => [
+                ...LearningSessionResource::make($session)->resolve($request),
+                'write_token' => $writeToken,
+            ],
         ]);
     }
 
@@ -59,15 +69,12 @@ class LearningSessionController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
+        // Reading an owned session does not require the write token. The
+        // token guards mutations only; ownership is enforced here.
         $session = LearningSession::query()
             ->ownedBy($user)
             ->with(['researchParticipant', 'currentPanoramaNode'])
             ->findOrFail($id);
-
-        abort_unless(
-            $session->hasValidWriteToken($request->header('X-Session-Write-Token')),
-            403,
-        );
 
         return LearningSessionResource::make($session);
     }

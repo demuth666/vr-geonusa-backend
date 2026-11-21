@@ -43,12 +43,12 @@ An activity selected by a Learning Experience as necessary for exploration compl
 _Avoid_: All published content, globally required content
 
 **ML Identification**:
-An expected but non-gating exploration activity in which a captured image is analyzed for heritage-object detections. Failure or unavailability does not prevent completion of the V1 learning journey.
-_Avoid_: Completion requirement, geometry classification
+An expected but non-gating exploration activity in which a captured image is analyzed for geometry-shape detections. Failure or unavailability does not prevent completion of the V1 learning journey.
+_Avoid_: Completion requirement, heritage-object classification
 
 **ML Class Mapping**:
-A model-version-specific association from a detector class key to a Heritage Object. An unknown class key remains a recorded detection but does not resolve to learning content.
-_Avoid_: Heritage-object slug, geometry class
+A model-version-specific association from a detector class key to a Geometry Shape. It identifies the mathematical form a detection approximates, never a Heritage Object directly. An unknown class key remains a recorded detection but does not resolve to a shape or learning content.
+_Avoid_: Heritage-object mapping, heritage class, model label
 
 **Inference Run**:
 One attributed attempt to analyze a student-submitted image, whether it succeeds or fails. It retains operational metadata and detections but not the submitted image.

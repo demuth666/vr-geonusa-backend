@@ -723,7 +723,9 @@ Laravel menerima detection
         ↓
 Laravel menyimpan inference
         ↓
-Laravel melakukan heritage/geometry mapping
+Laravel memetakan class key ke Geometry Shape
+        ↓
+Laravel mengambil Heritage Object pada panorama node yang relevan
         ↓
 Frontend menerima result
 ```
@@ -760,6 +762,15 @@ detections[]
     confidence
     bounding_box
 ```
+
+Class key adalah label model, bukan identitas objek warisan.
+
+Laravel memetakan class key ke Geometry Shape untuk model version yang dilaporkan. Laravel juga mengembalikan Heritage Object yang:
+
+- dianotasi pada panorama node yang diminta, dan
+- memiliki Heritage Geometry Mapping yang menggunakan Geometry Shape tersebut.
+
+Setiap Heritage Object yang dikembalikan disertai semantics pemetaannya, misalnya `didekati sebagai`.
 
 ## Laravel Persistence
 

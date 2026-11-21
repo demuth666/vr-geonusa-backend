@@ -76,7 +76,7 @@ class QuizBackOfficeTest extends TestCase
         $quiz = Quiz::query()->sole();
         $otherMapping = HeritageGeometryMapping::create([
             'heritage_object_id' => $quiz->heritageGeometryMapping->heritage_object_id,
-            'geometry_shape_id' => GeometryShape::create(['name' => 'Kerucut'])->id,
+            'geometry_shape_id' => GeometryShape::create(['name' => 'Limas Segitiga'])->id,
             'semantics' => 'didekati sebagai',
         ]);
         $this->actingAs($this->createUser(UserRole::SuperAdmin));
@@ -106,7 +106,7 @@ class QuizBackOfficeTest extends TestCase
             ->assertJsonPath('data.title', 'Stupa dan Geometri')
             ->assertJsonPath('data.heritage_geometry_mapping.id', $otherMapping->id)
             ->assertJsonPath('data.heritage_geometry_mapping.heritage_object.name', 'Stupa')
-            ->assertJsonPath('data.heritage_geometry_mapping.geometry_shape.name', 'Kerucut')
+            ->assertJsonPath('data.heritage_geometry_mapping.geometry_shape.name', 'Limas Segitiga')
             ->assertJsonPath(
                 'data.heritage_geometry_mapping.semantics',
                 'didekati sebagai',

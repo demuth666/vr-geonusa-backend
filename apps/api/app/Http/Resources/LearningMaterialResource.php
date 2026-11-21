@@ -19,6 +19,7 @@ class LearningMaterialResource extends JsonResource
             ],
             'geometry_mappings' => $this->geometryMappings->map(fn ($mapping) => [
                 'semantics' => $mapping->semantics,
+                'micro_quiz_id' => $mapping->quiz?->id,
                 'geometry_shape' => [
                     'id' => $mapping->geometryShape->id,
                     'name' => $mapping->geometryShape->name,

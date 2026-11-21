@@ -2,8 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Geometry\Models\GeometryShape;
+use App\Domain\Geometry\Models\HeritageGeometryMapping;
 use App\Domain\Heritage\Models\HeritageObject;
+use App\Domain\Heritage\Models\HeritageSite;
 use App\Domain\Heritage\Models\PanoramaNode;
+use App\Domain\Heritage\Models\PanoramaObjectAnnotation;
 use App\Domain\Learning\Enums\LearningSessionPhase;
 use App\Domain\MachineLearning\Enums\MlInferenceFailureReason;
 use App\Domain\MachineLearning\Enums\MlInferenceStatus;
@@ -121,7 +125,7 @@ class MlPredictionTest extends TestCase
             'model_version' => 'dummy-v1',
             'inference_ms' => 10,
             'detections' => [[
-                'class' => 'stupa',
+                'class' => 'setengah_bola',
                 'confidence' => 0.95,
                 'bounding_box' => [10, 20, 100, 120],
             ]],
@@ -134,9 +138,11 @@ class MlPredictionTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.model_version', 'dummy-v1')
             ->assertJsonPath('data.inference_ms', 10)
-            ->assertJsonPath('data.detections.0.class', 'stupa')
+            ->assertJsonPath('data.detections.0.class', 'setengah_bola')
             ->assertJsonPath('data.detections.0.confidence', 0.95)
-            ->assertJsonPath('data.detections.0.bounding_box', [10, 20, 100, 120]);
+            ->assertJsonPath('data.detections.0.bounding_box', [10, 20, 100, 120])
+            ->assertJsonPath('data.detections.0.geometry_shape', null)
+            ->assertJsonPath('data.detections.0.heritage_mappings', []);
         $this->assertIsInt($response->json('data.total_latency_ms'));
 
         $this->assertDatabaseHas('ml_model_versions', ['version' => 'dummy-v1']);
@@ -157,7 +163,7 @@ class MlPredictionTest extends TestCase
             'inference_ms' => 10,
         ]);
         $this->assertDatabaseHas('ml_detections', [
-            'class_key' => 'stupa',
+            'class_key' => 'setengah_bola',
             'confidence' => 0.95,
         ]);
         $this->assertSame([10, 20, 100, 120], MlDetection::query()->firstOrFail()->bounding_box);
@@ -259,39 +265,44 @@ class MlPredictionTest extends TestCase
         $this->assertSame(LearningSessionPhase::Exploration, $session->fresh()->phase);
     }
 
-    public function test_a_known_detected_class_resolves_to_its_heritage_object_and_geometry_mapping(): void
+    public function test_a_known_detected_class_resolves_to_its_geometry_shape_and_node_scoped_heritage_mappings(): void
     {
         [$user, $session, $writeToken] = $this->createLearningSession('ml-known', 'a', exploration: true);
-        $version = $this->seedClassMapping('dummy-v1', 'stupa');
-        Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v1', 'stupa'))]);
+        $node = PanoramaNode::query()->where('slug', 'stupa-induk')->sole();
+        $version = $this->seedClassMapping('dummy-v1', 'setengah_bola');
+        $this->seedDecoyHeritageObjects($node);
+        Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v1', 'setengah_bola'))]);
         Sanctum::actingAs($user);
 
-        $this->predict($session->id, $writeToken)
+        $this->predict($session->id, $writeToken, $node->id)
             ->assertCreated()
-            ->assertJsonPath('data.detections.0.class', 'stupa')
-            ->assertJsonPath('data.detections.0.heritage_object.slug', 'stupa')
-            ->assertJsonPath('data.detections.0.heritage_object.name', 'Stupa')
-            ->assertJsonPath('data.detections.0.geometry_mappings.0.semantics', 'didekati sebagai')
-            ->assertJsonPath('data.detections.0.geometry_mappings.0.geometry_shape.slug', 'setengah-bola');
+            ->assertJsonPath('data.detections.0.class', 'setengah_bola')
+            ->assertJsonPath('data.detections.0.geometry_shape.slug', 'setengah-bola')
+            ->assertJsonPath('data.detections.0.geometry_shape.name', 'Setengah Bola')
+            ->assertJsonPath('data.detections.0.heritage_mappings.0.heritage_object.slug', 'stupa')
+            ->assertJsonPath('data.detections.0.heritage_mappings.0.heritage_object.name', 'Stupa')
+            ->assertJsonPath('data.detections.0.heritage_mappings.0.semantics', 'didekati sebagai')
+            ->assertJsonCount(1, 'data.detections.0.heritage_mappings');
 
         $this->assertDatabaseHas('ml_class_mappings', [
             'ml_model_version_id' => $version->id,
-            'class_key' => 'stupa',
+            'class_key' => 'setengah_bola',
+            'geometry_shape_id' => GeometryShape::query()->where('slug', 'setengah-bola')->sole()->id,
         ]);
     }
 
     public function test_an_unknown_detected_class_remains_persisted_but_unresolved(): void
     {
         [$user, $session, $writeToken] = $this->createLearningSession('ml-unknown', 'a', exploration: true);
-        $this->seedClassMapping('dummy-v1', 'stupa');
+        $this->seedClassMapping('dummy-v1', 'setengah_bola');
         Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v1', 'unrecognized-class'))]);
         Sanctum::actingAs($user);
 
         $this->predict($session->id, $writeToken)
             ->assertCreated()
             ->assertJsonPath('data.detections.0.class', 'unrecognized-class')
-            ->assertJsonPath('data.detections.0.heritage_object', null)
-            ->assertJsonPath('data.detections.0.geometry_mappings', []);
+            ->assertJsonPath('data.detections.0.geometry_shape', null)
+            ->assertJsonPath('data.detections.0.heritage_mappings', []);
 
         $this->assertDatabaseHas('ml_detections', ['class_key' => 'unrecognized-class']);
     }
@@ -299,16 +310,16 @@ class MlPredictionTest extends TestCase
     public function test_resolution_is_scoped_to_the_reported_model_version(): void
     {
         [$user, $session, $writeToken] = $this->createLearningSession('ml-versioned', 'a', exploration: true);
-        $this->seedClassMapping('dummy-v1', 'stupa');
-        Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v2', 'stupa'))]);
+        $this->seedClassMapping('dummy-v1', 'setengah_bola');
+        Http::fake(['ml.test/*' => Http::response($this->predictionPayload('dummy-v2', 'setengah_bola'))]);
         Sanctum::actingAs($user);
 
         $this->predict($session->id, $writeToken)
             ->assertCreated()
             ->assertJsonPath('data.model_version', 'dummy-v2')
-            ->assertJsonPath('data.detections.0.class', 'stupa')
-            ->assertJsonPath('data.detections.0.heritage_object', null)
-            ->assertJsonPath('data.detections.0.geometry_mappings', []);
+            ->assertJsonPath('data.detections.0.class', 'setengah_bola')
+            ->assertJsonPath('data.detections.0.geometry_shape', null)
+            ->assertJsonPath('data.detections.0.heritage_mappings', []);
     }
 
     private function seedClassMapping(string $modelVersion, string $classKey): MlModelVersion
@@ -323,11 +334,41 @@ class MlPredictionTest extends TestCase
         ]);
         MlClassMapping::create([
             'ml_model_version_id' => $version->id,
-            'heritage_object_id' => HeritageObject::query()->where('slug', 'stupa')->sole()->id,
+            'geometry_shape_id' => GeometryShape::query()->where('slug', 'setengah-bola')->sole()->id,
             'class_key' => $classKey,
         ]);
 
         return $version;
+    }
+
+    /**
+     * An object using the detected shape on another node, and an object on the submitted
+     * node using another shape. Neither belongs in the submitted detection's response.
+     */
+    private function seedDecoyHeritageObjects(PanoramaNode $submittedNode): void
+    {
+        $site = HeritageSite::query()->sole();
+        $otherNode = PanoramaNode::query()->where('slug', 'pelataran-timur')->sole();
+
+        foreach ([
+            ['Relief Pelataran', 'setengah-bola', $otherNode],
+            ['Relief Stupa', 'kubus', $submittedNode],
+        ] as [$name, $shapeSlug, $node]) {
+            $object = HeritageObject::query()->create([
+                'heritage_site_id' => $site->id,
+                'name' => $name,
+                'description' => null,
+            ]);
+            HeritageGeometryMapping::query()->create([
+                'heritage_object_id' => $object->id,
+                'geometry_shape_id' => GeometryShape::query()->where('slug', $shapeSlug)->sole()->id,
+                'semantics' => 'didekati sebagai',
+            ]);
+            PanoramaObjectAnnotation::query()->create([
+                'panorama_node_id' => $node->id,
+                'heritage_object_id' => $object->id,
+            ]);
+        }
     }
 
     /** @return array<string, mixed> */

@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 use LogicException;
 
 class LearningSession extends Model
@@ -84,6 +85,24 @@ class LearningSession extends Model
         return is_string($token)
             && $token !== ''
             && hash_equals($this->write_token_hash, hash('sha256', $token));
+    }
+
+    /**
+     * Issue a fresh write token for this session and persist only its hash.
+     *
+     * Only the hash is stored, so an existing plaintext token can never be
+     * recovered. Rotating on an authenticated resume is how a refreshed
+     * browser tab obtains a usable token again.
+     */
+    public function reissueWriteToken(): string
+    {
+        $writeToken = Str::random(64);
+
+        $this->forceFill([
+            'write_token_hash' => hash('sha256', $writeToken),
+        ])->save();
+
+        return $writeToken;
     }
 
     public function transitionTo(LearningSessionPhase $phase): void

@@ -24,6 +24,9 @@ RUN if [ "$INSTALL_YOLO" = "true" ]; then \
 
 COPY services/ml/app ./app
 COPY services/ml/preprocessing ./preprocessing
+COPY services/ml/dataset ./dataset
+COPY services/ml/training ./training
+COPY services/ml/repository.py ./
 COPY services/ml/tests ./tests
 COPY services/ml/pytest.ini ./
 

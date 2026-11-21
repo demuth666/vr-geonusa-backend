@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.10.0
+  version: 0.11.0
 paths:
   /api/v1/health:
     get:
@@ -89,12 +89,17 @@ paths:
   /api/v1/me/learning-sessions/active:
     get:
       operationId: getActiveLearningSession
-      summary: Get the authenticated student's active learning session
+      summary: Get the authenticated student's active learning session and a fresh write token
+      description: >-
+        When a session is active, this response includes a newly issued
+        session write token and invalidates any previously issued token. The
+        plaintext token is never recoverable, so an authenticated resume is
+        how a refreshed client obtains a usable token again.
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Active learning session, or null when none exists
+          description: Active learning session with a fresh write token, or null when none exists
           content:
             application/json:
               schema:
@@ -151,12 +156,14 @@ paths:
   /api/v1/learning-sessions/{id}:
     get:
       operationId: getLearningSession
-      summary: Get an owned learning session using its write token
+      summary: Get a learning session owned by the authenticated student
+      description: >-
+        Reading an owned session does not require the session write token.
+        The token is required for session-scoped mutations only.
       security:
         - bearerAuth: []
       parameters:
         - $ref: "#/components/parameters/LearningSessionId"
-        - $ref: "#/components/parameters/SessionWriteToken"
       responses:
         "200":
           description: Learning session
@@ -170,14 +177,35 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
-        "403":
-          description: Invalid session write token
+        "404":
+          description: Learning session not found or not owned by the student
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /api/v1/learning-sessions/{id}/result:
+    get:
+      operationId: getCompletedLearningSessionResult
+      summary: Get the result summary of a completed learning session owned by the authenticated student
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/LearningSessionId"
+      responses:
+        "200":
+          description: Completed session summary without exposing answer keys
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompletedSessionResultResponse"
+        "401":
+          description: Authentication required
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Learning session not found or not owned by the student
+          description: Completed learning session not found or not owned by the student
           content:
             application/json:
               schema:
@@ -311,7 +339,7 @@ paths:
   /api/v1/learning-sessions/{id}/ml-predictions:
     post:
       operationId: createMlPrediction
-      summary: Identify geometry in a camera viewport during exploration, resolving known detector classes to heritage learning content
+      summary: Identify geometry in a camera viewport during exploration, resolving known detector classes to their Geometry Shape and node-scoped Heritage Geometry Mappings
       security:
         - bearerAuth: []
       parameters:
@@ -579,7 +607,10 @@ paths:
   /api/v1/learning-sessions/{id}/assessment-attempts:
     post:
       operationId: startAssessmentAttempt
-      summary: Start the assessment matching the learning session's current phase
+      summary: Start or resume the assessment matching the learning session's current phase
+      description: >-
+        Starting is idempotent while a draft attempt exists for the phase, so
+        a refreshed client receives the same draft attempt and can continue.
       security:
         - bearerAuth: []
       parameters:
@@ -592,6 +623,12 @@ paths:
             schema:
               $ref: "#/components/schemas/StartAssessmentAttemptRequest"
       responses:
+        "200":
+          description: Existing draft assessment attempt resumed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AssessmentAttemptResponse"
         "201":
           description: Assessment attempt created
           content:
@@ -1000,7 +1037,7 @@ components:
     MlDetection:
       type: object
       additionalProperties: false
-      required: [class, confidence, bounding_box, heritage_object, geometry_mappings]
+      required: [class, confidence, bounding_box, geometry_shape, heritage_mappings]
       properties:
         class:
           type: string
@@ -1016,16 +1053,26 @@ components:
             type: integer
             minimum: 0
             maximum: 4096
-        heritage_object:
-          description: The Heritage Object resolved from this detection's class key within the reported model version, or null when the class key is unknown
+        geometry_shape:
+          description: The Geometry Shape resolved from this detection's class key within the reported model version, or null when the class key is unknown
           oneOf:
-            - $ref: "#/components/schemas/HeritageObject"
+            - $ref: "#/components/schemas/GeometryShape"
             - type: "null"
-        geometry_mappings:
-          description: Applicable Heritage Geometry Mapping and Geometry Shape content for the resolved Heritage Object; empty when unresolved
+        heritage_mappings:
+          description: Heritage Objects annotated on the requested panorama node whose Heritage Geometry Mapping uses the resolved Geometry Shape; empty when the class key is unresolved or no annotated object uses the shape
           type: array
           items:
-            $ref: "#/components/schemas/GeometryMappingSummary"
+            $ref: "#/components/schemas/MlHeritageMapping"
+    MlHeritageMapping:
+      type: object
+      additionalProperties: false
+      required: [heritage_object, semantics]
+      properties:
+        heritage_object:
+          $ref: "#/components/schemas/HeritageObject"
+        semantics:
+          type: string
+          example: didekati sebagai
     RecordPanoramaVisitRequest:
       type: object
       additionalProperties: false
@@ -1337,11 +1384,11 @@ components:
           type: string
           enum: [completed]
         pretest_score:
-          type: integer
+          type: [integer, "null"]
           minimum: 0
           maximum: 100
         posttest_score:
-          type: integer
+          type: [integer, "null"]
           minimum: 0
           maximum: 100
         activity_summary:
@@ -1363,7 +1410,7 @@ components:
       properties:
         data:
           oneOf:
-            - $ref: "#/components/schemas/LearningSession"
+            - $ref: "#/components/schemas/LearningSessionCreated"
             - type: "null"
     CreateLearningSessionResponse:
       type: object
@@ -1539,8 +1586,10 @@ components:
       allOf:
         - $ref: "#/components/schemas/GeometryMappingSummary"
         - type: object
-          required: [learning_objectives]
+          required: [micro_quiz_id, learning_objectives]
           properties:
+            micro_quiz_id:
+              type: [integer, "null"]
             learning_objectives:
               type: array
               items:
@@ -1678,13 +1727,17 @@ components:
           $ref: "#/components/schemas/AuthenticatedStudent"
     AuthenticatedStudent:
       type: object
-      required: [id, email, student_profile]
+      required: [id, email, respondent_code, student_profile]
       properties:
         id:
           type: integer
         email:
           type: string
           format: email
+        respondent_code:
+          description: The student's research participant code, or null when the student is not enrolled in a study
+          type: [string, "null"]
+          pattern: "^RSP-[A-Z0-9]{6}$"
         student_profile:
           oneOf:
             - $ref: "#/components/schemas/StudentProfile"

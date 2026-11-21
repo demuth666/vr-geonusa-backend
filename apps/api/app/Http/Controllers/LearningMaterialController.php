@@ -16,7 +16,11 @@ class LearningMaterialController extends Controller
     {
         return LearningMaterialResource::make(
             HeritageObject::query()
-                ->with(['geometryMappings.geometryShape', 'geometryMappings.learningObjectives'])
+                ->with([
+                    'geometryMappings.geometryShape',
+                    'geometryMappings.learningObjectives',
+                    'geometryMappings.quiz',
+                ])
                 ->findOrFail($id),
         );
     }

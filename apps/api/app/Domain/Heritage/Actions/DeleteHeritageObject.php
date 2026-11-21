@@ -17,8 +17,7 @@ class DeleteHeritageObject
 
             if ($lockedObject->panoramaAnnotations()->exists()
                 || $lockedObject->geometryMappings()->exists()
-                || $lockedObject->activityEvents()->exists()
-                || $lockedObject->mlClassMappings()->exists()) {
+                || $lockedObject->activityEvents()->exists()) {
                 throw new HeritageObjectInUse;
             }
 

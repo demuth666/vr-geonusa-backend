@@ -35,7 +35,7 @@ class CreateMlPrediction
         $startedAt = hrtime(true);
         $session = LearningSession::query()->ownedBy($user)->findOrFail($sessionId);
         $this->assertWritable($session, $writeToken);
-        PanoramaNode::query()->findOrFail($panoramaNodeId);
+        $panoramaNode = PanoramaNode::query()->findOrFail($panoramaNodeId);
 
         try {
             $response = Http::baseUrl((string) config('services.ml.url'))
@@ -113,6 +113,7 @@ class CreateMlPrediction
             $cameraFov,
             $writeToken,
             $prediction,
+            $panoramaNode,
             $startedAt,
         ) {
             $session = LearningSession::query()
@@ -149,10 +150,12 @@ class CreateMlPrediction
             $detectedClassKeys = collect($prediction['detections'])->pluck('class')->unique()->values();
             $version->load(['classMappings' => fn ($query) => $query
                 ->whereIn('class_key', $detectedClassKeys)
-                ->with('heritageObject.geometryMappings.geometryShape'),
+                ->with('geometryShape'),
             ]);
+            $panoramaNode->load('annotations.heritageObject.geometryMappings');
 
             return $run->setRelation('modelVersion', $version)
+                ->setRelation('panoramaNode', $panoramaNode)
                 ->load('detections');
         });
     }

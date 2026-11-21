@@ -28,7 +28,7 @@ class AssessmentAttemptController extends Controller
 
         return response()->json([
             'data' => AssessmentAttemptResource::make($attempt)->resolve($request),
-        ], 201);
+        ], $attempt->wasRecentlyCreated ? 201 : 200);
     }
 
     public function show(
