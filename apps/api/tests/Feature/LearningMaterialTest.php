@@ -7,6 +7,7 @@ use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Learning\Enums\LearningSessionPhase;
 use App\Domain\Learning\Models\ActivityEvent;
 use App\Domain\Learning\Models\LearningSession;
+use App\Domain\Learning\Models\Quiz;
 use Database\Seeders\BorobudurSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Schema;
@@ -54,6 +55,10 @@ class LearningMaterialTest extends TestCase
             ->assertJsonPath('data.geometry_mappings.0.semantics', 'didekati sebagai')
             ->assertJsonPath('data.geometry_mappings.0.geometry_shape.name', 'Setengah Bola')
             ->assertJsonPath(
+                'data.geometry_mappings.0.micro_quiz_id',
+                Quiz::query()->sole()->id,
+            )
+            ->assertJsonPath(
                 'data.geometry_mappings.0.learning_objectives.0.title',
                 'Mengenali unsur setengah bola',
             )
@@ -62,6 +67,7 @@ class LearningMaterialTest extends TestCase
                     'heritage_object' => ['id', 'name', 'slug', 'description'],
                     'geometry_mappings' => [[
                         'semantics',
+                        'micro_quiz_id',
                         'geometry_shape' => ['id', 'name', 'slug', 'description'],
                         'learning_objectives' => [['id', 'title', 'content', 'position']],
                     ]],

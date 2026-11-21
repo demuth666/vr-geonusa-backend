@@ -41,6 +41,28 @@ the first super-admin after running migrations:
 docker compose run --rm api php artisan db:seed --class=AdminUserSeeder --force
 ```
 
+### Student demo data
+
+`DatabaseSeeder` also runs `DemoLearningSeeder` in `local`/`testing`. It creates a
+`ResearchParticipant` for the seeded student, a published
+`LearningExperienceRevision`, and the `dummy-v1` ML class mapping needed by the
+dummy detector. With that in place the seeded student
+(`student@example.test` / `student`) can complete one learning session
+end-to-end through the REST API:
+
+```bash
+docker compose exec -T api php artisan migrate --seed --force
+```
+
+The frontend reads the student's `respondent_code` from `GET /api/v1/me` and
+sends it automatically when starting a session.
+
+The seeded cover and panorama URLs point at objects in the `vr-geonusa-dev`
+bucket. For a local demo, upload the images from the frontend repository's
+`public/assets/images` and `public/panorama` folders (or use the Filament
+upload fields); otherwise the API returns URLs that 404 even though the
+database rows are correct.
+
 ## ML detector
 
 The ML service serves either detector, selected by `ML_DETECTOR`:

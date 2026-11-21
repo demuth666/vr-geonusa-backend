@@ -2,11 +2,13 @@
 
 namespace App\Domain\Identity\Models;
 
+use App\Domain\Research\Models\ResearchParticipant;
 use App\Domain\School\Models\Classroom;
 use App\Domain\School\Models\School;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class StudentProfile extends Model
 {
@@ -30,5 +32,10 @@ class StudentProfile extends Model
     public function classrooms(): BelongsToMany
     {
         return $this->belongsToMany(Classroom::class, 'classroom_members')->withTimestamps();
+    }
+
+    public function researchParticipants(): HasMany
+    {
+        return $this->hasMany(ResearchParticipant::class);
     }
 }

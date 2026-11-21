@@ -47,6 +47,7 @@ class AuthController extends Controller
         return $user->loadMissing([
             'studentProfile.school',
             'studentProfile.classrooms',
+            'studentProfile.researchParticipants',
         ]);
     }
 }

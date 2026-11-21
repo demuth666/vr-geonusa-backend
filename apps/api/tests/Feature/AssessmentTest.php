@@ -53,6 +53,12 @@ class AssessmentTest extends TestCase
 
         $attemptId = $created->json('data.id');
 
+        // A refreshed client must resume the draft instead of receiving a 409.
+        $this->startAttempt($session, $writeToken)
+            ->assertOk()
+            ->assertJsonPath('data.id', $attemptId)
+            ->assertJsonPath('data.status', 'draft');
+
         $this->getJson("/api/v1/assessment-attempts/{$attemptId}")
             ->assertOk()
             ->assertJsonPath('data.id', $attemptId);

@@ -15,6 +15,10 @@ class AuthenticatedStudentResource extends JsonResource
         return [
             'id' => $this->id,
             'email' => $this->email,
+            // The respondent code is the student's research-safe identifier.
+            // It selects the participant when the student starts a learning
+            // session, so the student never has to type or know it.
+            'respondent_code' => $profile?->researchParticipants->first()?->respondent_code,
             'student_profile' => $profile ? [
                 'id' => $profile->id,
                 'name' => $profile->name,

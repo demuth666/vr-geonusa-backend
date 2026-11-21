@@ -57,12 +57,17 @@ class LearningSessionTest extends TestCase
         $this->assertSame(hash('sha256', $writeToken), $session->write_token_hash);
         $this->assertNotSame($writeToken, $session->write_token_hash);
 
-        $this->getJson('/api/v1/me/learning-sessions/active')
+        $active = $this->getJson('/api/v1/me/learning-sessions/active')
             ->assertOk()
             ->assertJsonPath('data.id', $session->id)
             ->assertJsonPath('data.phase', 'pretest')
-            ->assertJsonMissingPath('data.write_token')
+            ->assertJsonStructure(['data' => ['write_token']])
             ->assertJsonMissingPath('data.write_token_hash');
+
+        $resumedToken = $active->json('data.write_token');
+        $this->assertNotSame($writeToken, $resumedToken);
+        $this->assertSame(hash('sha256', $resumedToken), $session->fresh()->write_token_hash);
+        $this->assertFalse($session->fresh()->hasValidWriteToken($writeToken));
 
         $this->postJson('/api/v1/learning-sessions', [
             'respondent_code' => $participant->respondent_code,
@@ -121,7 +126,7 @@ class LearningSessionTest extends TestCase
         $staleSession->transitionTo(LearningSessionPhase::Exploration);
     }
 
-    public function test_session_access_requires_ownership_and_valid_write_token(): void
+    public function test_session_reads_require_ownership_but_not_a_write_token(): void
     {
         [$studentA, $participantA] = $this->createParticipant('a');
         [$studentB] = $this->createParticipant('b');
@@ -132,12 +137,10 @@ class LearningSessionTest extends TestCase
         ])->assertCreated();
 
         $sessionId = $created->json('data.id');
-        $writeToken = $created->json('data.write_token');
 
         Sanctum::actingAs($studentB);
 
-        $this->withHeader('X-Session-Write-Token', $writeToken)
-            ->getJson("/api/v1/learning-sessions/{$sessionId}")
+        $this->getJson("/api/v1/learning-sessions/{$sessionId}")
             ->assertNotFound();
 
         $this->postJson('/api/v1/learning-sessions', [
@@ -146,12 +149,8 @@ class LearningSessionTest extends TestCase
 
         Sanctum::actingAs($studentA);
 
-        $this->withHeader('X-Session-Write-Token', 'invalid-token')
-            ->getJson("/api/v1/learning-sessions/{$sessionId}")
-            ->assertForbidden();
-
-        $this->withHeader('X-Session-Write-Token', $writeToken)
-            ->getJson("/api/v1/learning-sessions/{$sessionId}")
+        // Reads are ownership-checked only; the write token guards mutations.
+        $this->getJson("/api/v1/learning-sessions/{$sessionId}")
             ->assertOk()
             ->assertJsonPath('data.id', $sessionId)
             ->assertJsonMissingPath('data.write_token')

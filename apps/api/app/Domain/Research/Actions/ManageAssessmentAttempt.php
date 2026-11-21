@@ -44,10 +44,19 @@ class ManageAssessmentAttempt
                 throw new ConflictHttpException('No assessment instrument is configured for this phase.');
             }
 
-            if (AssessmentAttempt::query()
+            // Starting is idempotent for a draft: a browser refresh during an
+            // assessment must resume the existing attempt, not dead-end on a
+            // 409 with no way for the client to discover the attempt id.
+            $existing = AssessmentAttempt::query()
                 ->where('learning_session_id', $session->id)
                 ->where('assessment_instrument_id', $instrument->id)
-                ->exists()) {
+                ->first();
+
+            if ($existing) {
+                if ($existing->status === 'draft') {
+                    return $this->load($existing);
+                }
+
                 throw new ConflictHttpException('An assessment attempt already exists for this phase.');
             }
 
