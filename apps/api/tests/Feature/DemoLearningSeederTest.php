@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Geometry\Models\GeometryShape;
 use Database\Seeders\AssessmentSeeder;
 use Database\Seeders\BorobudurSeeder;
 use Database\Seeders\DemoLearningSeeder;
@@ -28,5 +29,9 @@ class DemoLearningSeederTest extends TestCase
             'status' => 'published',
         ]);
         $this->assertDatabaseCount('ml_class_mappings', 1);
+        $this->assertDatabaseHas('ml_class_mappings', [
+            'class_key' => 'setengah_bola',
+            'geometry_shape_id' => GeometryShape::query()->where('slug', 'setengah-bola')->sole()->id,
+        ]);
     }
 }

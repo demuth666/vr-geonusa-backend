@@ -81,13 +81,44 @@ class BorobudurSeeder extends Seeder
             'heritage_object_id' => $stupa->id,
         ]);
 
-        $halfSphere = GeometryShape::updateOrCreate(
-            ['slug' => 'setengah-bola'],
-            [
+        $shapes = collect([
+            'balok' => [
+                'name' => 'Balok',
+                'description' => 'Bangun ruang dengan enam sisi datar berbentuk persegi panjang.',
+            ],
+            'bola' => [
+                'name' => 'Bola',
+                'description' => 'Bangun ruang dengan semua titik pada permukaannya berjarak sama dari pusat.',
+            ],
+            'kerucut' => [
+                'name' => 'Kerucut',
+                'description' => 'Bangun ruang dengan alas lingkaran dan satu titik puncak.',
+            ],
+            'kubus' => [
+                'name' => 'Kubus',
+                'description' => 'Bangun ruang dengan enam sisi datar berbentuk persegi yang sama besar.',
+            ],
+            'limas-segiempat' => [
+                'name' => 'Limas Segi Empat',
+                'description' => 'Bangun ruang dengan alas persegi dan empat sisi tegak berbentuk segitiga.',
+            ],
+            'prisma-segitiga' => [
+                'name' => 'Prisma Segitiga',
+                'description' => 'Bangun ruang dengan dua alas segitiga sejajar dan sisi tegak berbentuk persegi panjang.',
+            ],
+            'setengah-bola' => [
                 'name' => 'Setengah Bola',
                 'description' => 'Bagian dari bola yang dibatasi oleh sebuah lingkaran besar.',
             ],
-        );
+            'tabung' => [
+                'name' => 'Tabung',
+                'description' => 'Bangun ruang dengan dua alas lingkaran sejajar dan selimut melengkung.',
+            ],
+        ])->mapWithKeys(fn (array $attributes, string $slug) => [
+            $slug => GeometryShape::updateOrCreate(['slug' => $slug], $attributes),
+        ]);
+
+        $halfSphere = $shapes['setengah-bola'];
 
         $mapping = HeritageGeometryMapping::updateOrCreate(
             [

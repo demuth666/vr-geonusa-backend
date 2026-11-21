@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: VR-GeoNusa API
-  version: 0.10.0
+  version: 0.11.0
 paths:
   /api/v1/health:
     get:
@@ -339,7 +339,7 @@ paths:
   /api/v1/learning-sessions/{id}/ml-predictions:
     post:
       operationId: createMlPrediction
-      summary: Identify geometry in a camera viewport during exploration, resolving known detector classes to heritage learning content
+      summary: Identify geometry in a camera viewport during exploration, resolving known detector classes to their Geometry Shape and node-scoped Heritage Geometry Mappings
       security:
         - bearerAuth: []
       parameters:
@@ -1037,7 +1037,7 @@ components:
     MlDetection:
       type: object
       additionalProperties: false
-      required: [class, confidence, bounding_box, heritage_object, geometry_mappings]
+      required: [class, confidence, bounding_box, geometry_shape, heritage_mappings]
       properties:
         class:
           type: string
@@ -1053,16 +1053,26 @@ components:
             type: integer
             minimum: 0
             maximum: 4096
-        heritage_object:
-          description: The Heritage Object resolved from this detection's class key within the reported model version, or null when the class key is unknown
+        geometry_shape:
+          description: The Geometry Shape resolved from this detection's class key within the reported model version, or null when the class key is unknown
           oneOf:
-            - $ref: "#/components/schemas/HeritageObject"
+            - $ref: "#/components/schemas/GeometryShape"
             - type: "null"
-        geometry_mappings:
-          description: Applicable Heritage Geometry Mapping and Geometry Shape content for the resolved Heritage Object; empty when unresolved
+        heritage_mappings:
+          description: Heritage Objects annotated on the requested panorama node whose Heritage Geometry Mapping uses the resolved Geometry Shape; empty when the class key is unresolved or no annotated object uses the shape
           type: array
           items:
-            $ref: "#/components/schemas/GeometryMappingSummary"
+            $ref: "#/components/schemas/MlHeritageMapping"
+    MlHeritageMapping:
+      type: object
+      additionalProperties: false
+      required: [heritage_object, semantics]
+      properties:
+        heritage_object:
+          $ref: "#/components/schemas/HeritageObject"
+        semantics:
+          type: string
+          example: didekati sebagai
     RecordPanoramaVisitRequest:
       type: object
       additionalProperties: false

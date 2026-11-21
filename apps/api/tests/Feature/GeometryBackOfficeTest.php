@@ -61,7 +61,7 @@ class GeometryBackOfficeTest extends TestCase
 
     public function test_geometry_authoring_follows_role_boundaries(): void
     {
-        $shape = GeometryShape::query()->sole();
+        $shape = GeometryShape::query()->where('slug', 'setengah-bola')->sole();
         $mapping = HeritageGeometryMapping::query()->sole();
         $superAdmin = $this->createUser(UserRole::SuperAdmin);
         $researcher = $this->createUser(UserRole::Researcher);
@@ -107,12 +107,12 @@ class GeometryBackOfficeTest extends TestCase
             Livewire::test(ManageGeometryShapes::class),
             'create',
             [
-                'name' => 'Kerucut',
-                'description' => 'Bangun ruang dengan alas lingkaran.',
+                'name' => 'Limas Segitiga',
+                'description' => 'Bangun ruang dengan alas segitiga dan satu titik puncak.',
             ],
         )->assertHasNoActionErrors();
 
-        $shape = GeometryShape::query()->where('slug', 'kerucut')->sole();
+        $shape = GeometryShape::query()->where('slug', 'limas-segitiga')->sole();
         $this->actingAs($this->createUser(UserRole::Researcher));
 
         $this->callFilamentAction(
@@ -129,9 +129,9 @@ class GeometryBackOfficeTest extends TestCase
             ->assertOk()
             ->assertJsonFragment([
                 'semantics' => 'didekati sebagai',
-                'name' => 'Kerucut',
-                'slug' => 'kerucut',
-                'description' => 'Bangun ruang dengan alas lingkaran.',
+                'name' => 'Limas Segitiga',
+                'slug' => 'limas-segitiga',
+                'description' => 'Bangun ruang dengan alas segitiga dan satu titik puncak.',
             ]);
 
         $this->callFilamentAction(

@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Domain\Geometry\Models\GeometryShape;
 use App\Domain\Heritage\Actions\DeleteHeritageObject;
 use App\Domain\Heritage\Exceptions\HeritageObjectInUse;
 use App\Domain\Heritage\Models\HeritageObject;
@@ -227,6 +228,27 @@ class HeritageObjectBackOfficeTest extends TestCase
         $this->assertDatabaseMissing('heritage_objects', ['id' => $heritageObject->id]);
     }
 
+    public function test_shape_class_mappings_do_not_block_heritage_object_deletion(): void
+    {
+        $heritageObject = HeritageObject::query()->create([
+            'heritage_site_id' => HeritageSite::query()->sole()->id,
+            'name' => 'Objek Dekat Pemetaan Bentuk',
+            'description' => null,
+        ]);
+        $model = MlModel::query()->create(['key' => 'geometry-detector', 'name' => 'Geometry Detector']);
+        $version = MlModelVersion::query()->create(['ml_model_id' => $model->id, 'version' => 'dummy-v1']);
+        $mapping = MlClassMapping::query()->create([
+            'ml_model_version_id' => $version->id,
+            'geometry_shape_id' => GeometryShape::query()->where('slug', 'setengah-bola')->sole()->id,
+            'class_key' => 'setengah_bola',
+        ]);
+
+        app(DeleteHeritageObject::class)->execute($heritageObject);
+
+        $this->assertDatabaseMissing('heritage_objects', ['id' => $heritageObject->id]);
+        $this->assertDatabaseHas('ml_class_mappings', ['id' => $mapping->id]);
+    }
+
     public function test_heritage_object_with_historical_activity_cannot_be_deleted(): void
     {
         $heritageObject = HeritageObject::query()->create([
@@ -247,26 +269,6 @@ class HeritageObjectBackOfficeTest extends TestCase
             'type' => ActivityEvent::MATERIAL_VIEWED,
             'heritage_object_id' => $heritageObject->id,
             'occurred_at' => now(),
-        ]);
-
-        $this->expectException(HeritageObjectInUse::class);
-
-        app(DeleteHeritageObject::class)->execute($heritageObject);
-    }
-
-    public function test_heritage_object_with_an_ml_class_mapping_cannot_be_deleted(): void
-    {
-        $heritageObject = HeritageObject::query()->create([
-            'heritage_site_id' => HeritageSite::query()->sole()->id,
-            'name' => 'Objek Dengan Pemetaan Kelas',
-            'description' => null,
-        ]);
-        $model = MlModel::query()->create(['key' => 'geometry-detector', 'name' => 'Geometry Detector']);
-        $version = MlModelVersion::query()->create(['ml_model_id' => $model->id, 'version' => 'dummy-v1']);
-        MlClassMapping::query()->create([
-            'ml_model_version_id' => $version->id,
-            'heritage_object_id' => $heritageObject->id,
-            'class_key' => 'objek-baru',
         ]);
 
         $this->expectException(HeritageObjectInUse::class);

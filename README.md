@@ -147,8 +147,8 @@ export/
 ```
 
 - `classes.txt` line order defines the YOLO class index. Keys are detector class keys
-  that Laravel resolves through ML Class Mappings to Heritage Objects; they are not
-  Geometry Shapes.
+  that Laravel resolves through ML Class Mappings to Geometry Shapes; they are not
+  Heritage Objects.
 - Each label line is an object-level bounding box in normalized YOLO form:
   `class_index x_center y_center width height`. Empty label files are valid negative
   samples, but the export as a whole must contain at least one object box.

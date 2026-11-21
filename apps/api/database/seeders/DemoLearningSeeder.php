@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Domain\Geometry\Models\GeometryShape;
 use App\Domain\Heritage\Models\HeritageObject;
 use App\Domain\Heritage\Models\PanoramaNode;
 use App\Domain\Identity\Models\StudentProfile;
@@ -20,8 +21,8 @@ use Illuminate\Database\Seeder;
  *
  * The base seeders create content, but a student cannot start a session
  * until a ResearchParticipant and a published LearningExperienceRevision
- * exist. The dummy ML detector (class key "stupa", model version "dummy-v1")
- * also needs a class mapping to resolve a HeritageObject.
+ * exist. The dummy ML detector (class key "setengah_bola", model version
+ * "dummy-v1") also needs a class mapping to resolve a Geometry Shape.
  *
  * This seeder is local/testing only and is intentionally idempotent.
  */
@@ -43,9 +44,10 @@ class DemoLearningSeeder extends Seeder
 
         $node = PanoramaNode::query()->where('slug', 'stupa-induk')->first();
         $object = HeritageObject::query()->where('slug', 'stupa')->first();
+        $shape = GeometryShape::query()->where('slug', 'setengah-bola')->first();
         $quiz = Quiz::query()->orderBy('id')->first();
 
-        if (! $study || ! $profile || ! $node || ! $object || ! $quiz) {
+        if (! $study || ! $profile || ! $node || ! $object || ! $shape || ! $quiz) {
             return;
         }
 
@@ -78,12 +80,12 @@ class DemoLearningSeeder extends Seeder
             'version' => 'dummy-v1',
         ]);
 
-        MlClassMapping::query()->firstOrCreate(
+        MlClassMapping::query()->updateOrCreate(
             [
                 'ml_model_version_id' => $version->id,
-                'class_key' => 'stupa',
+                'class_key' => 'setengah_bola',
             ],
-            ['heritage_object_id' => $object->id],
+            ['geometry_shape_id' => $shape->id],
         );
     }
 }
