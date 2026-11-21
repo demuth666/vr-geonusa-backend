@@ -127,6 +127,22 @@ so a deployment without a usable artifact stays observable instead of crash-loop
 The dummy detector remains the supported way to run the stack without an artifact at
 all.
 
+### Map detector class keys to geometry shapes
+
+A prediction resolves a detector class key only when the reported model version has an
+ML Class Mapping to a Geometry Shape. Super admins manage those mappings at
+`/admin/ml-class-mappings`; researchers and teachers can view them.
+
+The V1 geometry detector's eight class keys are seeded explicitly, after
+`BorobudurSeeder` has created the shapes:
+
+```bash
+docker compose exec -T api php artisan db:seed --class=GeometryDetectorSeeder --force
+```
+
+The seeder is idempotent and is not part of `DatabaseSeeder`. A class key that is not
+mapped stays a stored detection with `geometry_shape: null`; it is never guessed.
+
 ## Dataset preparation
 
 Phase 15 dataset tooling lives in `services/ml/dataset/`, and model training lives in
