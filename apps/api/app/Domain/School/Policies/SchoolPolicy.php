@@ -32,5 +32,4 @@ class SchoolPolicy
     {
         return $user->role === UserRole::SuperAdmin;
     }
-
 }

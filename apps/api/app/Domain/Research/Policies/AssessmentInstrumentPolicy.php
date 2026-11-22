@@ -32,5 +32,4 @@ class AssessmentInstrumentPolicy
     {
         return $user->role === UserRole::SuperAdmin;
     }
-
 }
