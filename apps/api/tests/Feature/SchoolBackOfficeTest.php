@@ -205,5 +205,4 @@ class SchoolBackOfficeTest extends TestCase
 
         $this->assertFalse($classroom->studentProfiles()->whereKey($otherProfile->id)->exists());
     }
-
 }
